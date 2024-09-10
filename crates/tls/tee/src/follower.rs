@@ -1,5 +1,4 @@
-use std::{ future::Future, mem};
-
+use std::{future::Future, mem};
 
 use futures::{
     stream::{SplitSink, SplitStream},
@@ -17,7 +16,7 @@ use tls_core::{
     msgs::{
         alert::AlertMessagePayload,
         codec::Codec,
-        enums::{AlertDescription, ProtocolVersion, ContentType,},
+        enums::{AlertDescription, ContentType, ProtocolVersion},
         handshake::Random,
         message::{OpaqueMessage, PlainMessage},
     },
@@ -336,6 +335,19 @@ impl TeeTlsFollower {
     }
 
     #[instrument(level = "trace", skip_all, err)]
+    async fn attestation_doc(&mut self, _hex: Vec<u8>) -> Result<(), TeeTlsError> {
+        debug!("Follower computing the attestation doc...");
+        // TODO: Implement generating the attestation doc
+        let doc = Vec::new();
+
+        self.sink
+            .send(TeeTlsMessage::AttestationDoc(AttestationDoc { msg: doc }))
+            .await?;
+
+        Ok(())
+    }
+
+    #[instrument(level = "trace", skip_all, err)]
     async fn compute_client_key(&mut self, _pk: Vec<u8>) -> Result<(), TeeTlsError> {
         debug!("Follower computing the client key share...");
         let pk = self.rcb.get_client_key_share().await.map_err(|e| {
@@ -424,7 +436,6 @@ impl TeeTlsFollower {
     ) -> Result<(), TeeTlsError> {
         debug!("Follower encrypting the message...");
         let Active { request_data, .. } = self.state.try_as_active_mut()?;
-
 
         match (msg, seq) {
             (Some(msg), Some(seq)) => {
@@ -568,6 +579,10 @@ impl TeeTlsFollower {
     }
     pub async fn compute_client_key(&mut self, msg: Vec<u8>) {
         ctx.try_or_stop(|_| self.compute_client_key(msg)).await;
+    }
+
+    pub async fn attestation_doc(&mut self, msg: Vec<u8>) {
+        ctx.try_or_stop(|_| self.attestation_doc(msg)).await;
     }
 
     pub async fn encrypt_alert(&mut self, msg: Vec<u8>) {

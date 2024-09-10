@@ -57,6 +57,8 @@ pub(crate) enum Kind {
     PeerMisbehaved,
     /// Other error
     Other,
+    /// Remote attestation failed
+    RemoteAttestationFailed,
 }
 
 impl Display for Kind {
@@ -66,6 +68,7 @@ impl Display for Kind {
             Kind::Io => write!(f, "Io"),
             Kind::PeerMisbehaved => write!(f, "PeerMisbehaved"),
             Kind::Other => write!(f, "Other"),
+            Kind::RemoteAttestationFailed => write!(f, "RemoteAttestationFailed"),
         }
     }
 }
