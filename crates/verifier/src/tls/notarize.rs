@@ -74,6 +74,14 @@ impl Verifier<Notarize> {
                 trace!("request path: {:?}", path);
                 if path.starts_with("https://swapi.dev/api/people/1") {
                 } else if path.starts_with("https://api.x.com/1.1/account/settings.json") {
+                } else if path.starts_with("https://bonfire.robinhood.com/portfolio/performance/") {
+                    let parsed: crate::tls::robinhood::Performance = serde_json::from_str(&body).unwrap();
+                    let amount = parsed.performance_baseline.amount;
+                    if amount > 10000.00 {
+                        let attestation = "amount>10000";
+                        let signature = signer.sign(attestation.as_bytes());
+                        attestations.insert(attestation.to_string(), signature.into());
+                    }
                 } else if path.starts_with(
                     "https://x.com/i/api/graphql/Yka-W8dz7RaEuQNkroPkYw/UserByScreenName",
                 ) {
