@@ -3,10 +3,12 @@ mod config;
 pub use config::VerifierConfig;
 
 use enum_try_as_inner::EnumTryAsInner;
+
 use tlsn_verifier::tls::{
     state::{self, Initialized},
     Verifier,
 };
+
 use tracing::info;
 use wasm_bindgen::prelude::*;
 use ws_stream_wasm::{WsMeta, WsStream};
