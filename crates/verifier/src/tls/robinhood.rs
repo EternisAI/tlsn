@@ -7,7 +7,6 @@ pub struct Performance {
     pub performance_baseline: PerformanceBaseline,
 }
 
-
 #[derive(Debug, Deserialize)]
 /// Represents the performance baseline data.
 pub struct PerformanceBaseline {

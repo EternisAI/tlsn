@@ -21,7 +21,8 @@ lazy_static! {
     static ref FINALIZATION_HISTOGRAM: Histogram = register_histogram!(
         "finalization_duration_seconds",
         "The duration of finalization in seconds"
-    ).unwrap();
+    )
+    .unwrap();
 }
 
 impl Verifier<Notarize> {
@@ -75,10 +76,12 @@ impl Verifier<Notarize> {
                 if path.starts_with("https://swapi.dev/api/people/1") {
                 } else if path.starts_with("https://api.x.com/1.1/account/settings.json") {
                 } else if path.starts_with("https://bonfire.robinhood.com/portfolio/performance/") {
-                    let parsed: crate::tls::robinhood::Performance = serde_json::from_str(&body).unwrap();
+                    let parsed: crate::tls::robinhood::Performance =
+                        serde_json::from_str(&body).unwrap();
                     let amount = parsed.performance_baseline.amount;
-                    if amount > 10000.00 {
-                        let attestation = "amount>10000";
+                    let currency = parsed.performance_baseline.currency_code;
+                    if currency == "USD" && amount > 10000.00 {
+                        let attestation = "amount>$10000.00";
                         let signature = signer.sign(attestation.as_bytes());
                         attestations.insert(attestation.to_string(), signature.into());
                     }
