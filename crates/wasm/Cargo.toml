@@ -52,4 +52,5 @@ ws_stream_wasm = { git = "https://github.com/tlsnotary/ws_stream_wasm", rev = "2
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-rayon = { version = "1.0" }
 
-nitro-enclave-attestation-verifier = { path = "../../../remote-attestation-verifier" }
+remote-attestation-verifier = { path = "../../../remote-attestation-verifier" }
+base64 = "0.22.1"

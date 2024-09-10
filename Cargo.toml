@@ -27,7 +27,6 @@ members = [
     "crates/wasm-test-runner",
     "crates/verifier",
     "crates/wasm",
-    "crates/remote-attestation-verifier",
 ]
 resolver = "2"
 
@@ -60,7 +59,6 @@ tlsn-universal-hash = { path = "crates/components/universal-hash" }
 tlsn-utils = { git = "https://github.com/tlsnotary/tlsn-utils", rev = "45370cc" }
 tlsn-utils-aio = { git = "https://github.com/tlsnotary/tlsn-utils", rev = "45370cc" }
 tlsn-verifier = { path = "crates/verifier" }
-remote-attestation-verifier = { path = "crates/remote-attestation-verifier" }
 
 mpz-circuits = { git = "https://github.com/privacy-scaling-explorations/mpz", rev = "b8ae7ac" }
 mpz-common = { git = "https://github.com/privacy-scaling-explorations/mpz", rev = "b8ae7ac" }
