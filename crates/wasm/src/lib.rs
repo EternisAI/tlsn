@@ -87,24 +87,16 @@ pub fn verify_attestation_document(attestation_document: AttestationDocument) ->
     //     parse_cbor_document(&document_data).expect("parse cbor document failed");
 
     let protected = base64::decode(attestation_document.protected.expect("protected is null"))
-        .expect("failed to decode protected")
-        .try_into()
         .expect("failed to decode protected");
     let signature = base64::decode(attestation_document.signature.expect("signature is null"))
-        .expect("failed to decode signature")
-        .try_into()
         .expect("failed to decode signature");
     let payload = base64::decode(attestation_document.payload.expect("payload is null"))
-        .expect("failed to decode payload")
-        .try_into()
         .expect("failed to decode payload");
     let certificate = base64::decode(
         attestation_document
             .certificate
             .expect("certificate is null"),
     )
-    .expect("failed to decode certificate")
-    .try_into()
     .expect("failed to decode certificate");
 
     //info!("attestation_document: {:?}", attestation_document);
