@@ -53,10 +53,14 @@ pub fn init_logging(config: Option<LoggingConfig>) {
         .without_time()
         .with_writer(MakeWebConsoleWriter::new()); // write events to the console
 
-    tracing_subscriber::registry()
+    let res = tracing_subscriber::registry()
         .with(FilterFn::new(log::filter(config)))
         .with(fmt_layer)
-        .init();
+        .try_init();
+
+    if res.is_err() {
+        error!("Failed to initialize logging: {:?}", res.err());
+    }
 
     // https://github.com/rustwasm/console_error_panic_hook
     std::panic::set_hook(Box::new(|info| {
@@ -78,7 +82,7 @@ pub struct AttestationDocument {
 
 #[wasm_bindgen]
 pub fn verify_attestation_document(attestation_document: AttestationDocument) -> bool {
-    info!("🔍 Starting verification..");
+    //info!("🔍 Starting verification..");
 
     let protected = base64::decode(attestation_document.protected.expect("protected is null"))
         .expect("failed to decode protected");
@@ -94,7 +98,7 @@ pub fn verify_attestation_document(attestation_document: AttestationDocument) ->
     .expect("failed to decode certificate");
 
     let verify_result = verify(&protected, &signature, &payload, &certificate);
-    info!("✅ Verification complete: {:?}", verify_result);
+    //info!("✅ Verification complete: {:?}", verify_result);
 
     match verify_result {
         Ok(()) => true,
