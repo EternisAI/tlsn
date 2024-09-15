@@ -21,7 +21,8 @@ lazy_static! {
     static ref FINALIZATION_HISTOGRAM: Histogram = register_histogram!(
         "finalization_duration_seconds",
         "The duration of finalization in seconds"
-    ).unwrap();
+    )
+    .unwrap();
 }
 
 impl Verifier<Notarize> {
@@ -121,11 +122,13 @@ impl Verifier<Notarize> {
                 let signature = signer.sign(&hash);
                 info!("signing session");
                 let signed_session = SignedSession {
-                    application_data: hex::encode(hash),
+                    application_signed_data: hex::encode(hash),
                     signature: signature.into(),
                     attestations,
+                    application_data: hex::encode(data),
                 };
                 info!("sending signed session");
+
                 io.send(signed_session.clone()).await?;
                 info!(
                     "sent signed session {:?}",

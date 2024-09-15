@@ -4,6 +4,7 @@
 
 use super::{state::Notarize, Prover, ProverError};
 use serio::stream::IoStreamExt as _;
+use tls_client::sign;
 use tlsn_core::msg::SignedSession;
 use tracing::{debug, instrument};
 
@@ -35,6 +36,11 @@ impl Prover<Notarize> {
             mux_fut.await?;
         }
 
-        Ok(SignedSession::new(signed_session.application_data, signed_session.signature, signed_session.attestations))
+        Ok(SignedSession::new(
+            signed_session.application_data,
+            signed_session.application_signed_data,
+            signed_session.signature,
+            signed_session.attestations,
+        ))
     }
 }

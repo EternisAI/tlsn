@@ -50,9 +50,11 @@ pub struct SignedSessionHeader {
 #[derive(Serialize, Deserialize, Clone)]
 #[cfg(feature = "tee")]
 pub struct SignedSession {
-    /// The TLS application data
+    /// The hex encoded TLS application data which comprises request and response data
     pub application_data: String,
-    /// The signature on application data
+    /// The hex encoded sha256 hash of the application data which is signed by the notary
+    pub application_signed_data: String,
+    /// The signature of the application data
     pub signature: Signature,
     /// A vector of hashmap of strings to signatures
     pub attestations: HashMap<String, Signature>,
@@ -66,11 +68,13 @@ impl SignedSession {
     /// Create a new notarized session.
     pub fn new(
         application_data: String,
+        application_signed_data: String,
         signature: Signature,
         attestations: HashMap<String, Signature>,
     ) -> Self {
         Self {
             application_data,
+            application_signed_data,
             signature,
             attestations,
         }
