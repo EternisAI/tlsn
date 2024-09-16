@@ -24,7 +24,7 @@ use tracing_web::MakeWebConsoleWriter;
 use wasm_bindgen::prelude::*;
 
 use base64::engine::{general_purpose::STANDARD, Engine};
-use remote_attestation_verifier::{parse_cbor_document, verify};
+use remote_attestation_verifier::{parse_document, parse_payload, verify};
 
 #[cfg(feature = "test")]
 pub use tests::*;
@@ -81,24 +81,26 @@ pub struct AttestationDocument {
 }
 
 #[wasm_bindgen]
-pub fn verify_attestation_document(attestation_document: AttestationDocument) -> bool {
+pub fn verify_attestation_document(attestation_document: String) -> bool {
     //info!("🔍 Starting verification..");
 
-    let protected = base64::decode(attestation_document.protected.expect("protected is null"))
-        .expect("failed to decode protected");
-    let signature = base64::decode(attestation_document.signature.expect("signature is null"))
-        .expect("failed to decode signature");
-    let payload = base64::decode(attestation_document.payload.expect("payload is null"))
-        .expect("failed to decode payload");
-    let certificate = base64::decode(
-        attestation_document
-            .certificate
-            .expect("certificate is null"),
-    )
-    .expect("failed to decode certificate");
+    let attestation_document =
+        base64::decode(attestation_document).expect("failed to decode document");
 
-    let verify_result = verify(&protected, &signature, &payload, &certificate);
-    //info!("✅ Verification complete: {:?}", verify_result);
+    let attestation_document =
+        parse_document(&attestation_document).expect("parse cbor document failed");
+
+    let payload = parse_payload(&attestation_document.payload).expect("parse payload failed");
+    let verify_result = verify(
+        &attestation_document.protected,
+        &attestation_document.signature,
+        &attestation_document.payload,
+        &payload.certificate,
+    );
+
+    info!("payload: {:?}", payload);
+
+    info!("✅ Verification complete: {:?}", verify_result);
 
     match verify_result {
         Ok(()) => true,
