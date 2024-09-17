@@ -1,9 +1,9 @@
-use std::{collections::VecDeque, future::Future, mem};
-
 use futures::{
     stream::{SplitSink, SplitStream},
     StreamExt,
 };
+use rand::Rng;
+use std::{collections::VecDeque, future::Future, mem};
 
 use async_trait::async_trait;
 use futures::SinkExt;
@@ -25,14 +25,14 @@ use tls_core::{
         SerializableCipherSuiteCommon, SerializableSupportedCipherSuite, SupportedCipherSuite,
     },
 };
-use tracing::{debug, instrument, Instrument};
+use tracing::{debug, instrument, trace, Instrument};
 
 use crate::{
     error::Kind,
     follower::{
-        ComputeClientKey, ComputeClientRandom, Decrypt, Encrypt, GetClientFinishedVd, ServerClosed,
-        ServerFinishedVd, SetCipherSuite, SetProtocolVersion, SetServerCertDetails,
-        SetServerKeyShare, SetServerKxDetails, SetServerRandom,
+        AttestationDoc, ComputeClientKey, ComputeClientRandom, Decrypt, Encrypt,
+        GetClientFinishedVd, ServerClosed, ServerFinishedVd, SetCipherSuite, SetProtocolVersion,
+        SetServerCertDetails, SetServerKeyShare, SetServerKxDetails, SetServerRandom,
     },
     msg::{CloseConnection, Commit, TeeTlsLeaderMsg, TeeTlsMessage},
     TeeTlsChannel, TeeTlsError,
@@ -92,10 +92,47 @@ impl TeeTlsLeader {
         }
     }
 
+    /// Verifies the attestation document.
+    pub fn verify_attestation() {
+        // Generate a random hex string
+        // let random_hex: String = rand::thread_rng()
+        //     .sample_iter(&rand::distributions::Alphanumeric)
+        //     .take(32)
+        //     .map(char::from)
+        //     .collect();
+        // // Send the random hex to the verifier
+        // self.sink
+        //     .send(TeeTlsMessage::AttestationDoc(AttestationDoc {
+        //         msg: random_hex.as_bytes().to_vec(),
+        //     }))
+        //     .await
+        //     .map_err(TeeTlsError::from)?;
+
+        // while let Some(msg) = self.stream.as_mut().unwrap().next().await {
+        //     let msg = msg.unwrap();
+        //     let msg: TeeTlsMessage = TeeTlsMessage::try_from(msg).unwrap();
+        //     if let TeeTlsMessage::AttestationDoc(doc) = msg {
+        //         trace!("Received attestation doc: {:?}", doc);
+        //         match verify_attestation_doc(&doc) {
+        //             Ok(_) => {
+        //                 debug!("Attestation doc verified successfully");
+        //                 break;
+        //             }
+        //             Err(e) => {
+        //                 return Err(TeeTlsError::new(
+        //                     Kind::RemoteAttestationFailed,
+        //                     e.to_string(),
+        //                 ))
+        //             }
+        //         }
+        //     }
+        // }
+    }
+
     /// Performs any one-time setup operations.
     #[instrument(level = "trace", skip_all, err)]
     pub async fn setup(&mut self) -> Result<(), TeeTlsError> {
-        debug!("Setting up the leader...");
+        trace!("Setting up the leader...");
         Ok(())
     }
 
@@ -565,3 +602,9 @@ mod state {
 }
 
 use state::*;
+
+// Add this function definition above the `setup` method or in an appropriate module
+fn verify_attestation_doc(doc: &AttestationDoc) -> Result<(), TeeTlsError> {
+    // Implement the verification logic here
+    Ok(())
+}

@@ -106,10 +106,11 @@ impl JsProver {
         let notarized_session = prover.finalize().await?;
 
         info!(
-            "notarization complete. Signature: {:?}\r\n attributes: {:?} attestations {:?}",
+            "notarization complete. Signature: {:?}\r\n attributes: {:?} attestations {:?} application_data {:?}",
             notarized_session.signature,
             notarized_session.attestations.keys(),
-            notarized_session.attestations.values()
+            notarized_session.attestations.values(),
+            notarized_session.application_data
         );
 
         Ok(notarized_session.into())

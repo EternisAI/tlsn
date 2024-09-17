@@ -21,7 +21,8 @@ lazy_static! {
     static ref FINALIZATION_HISTOGRAM: Histogram = register_histogram!(
         "finalization_duration_seconds",
         "The duration of finalization in seconds"
-    ).unwrap();
+    )
+    .unwrap();
 }
 
 impl Verifier<Notarize> {
@@ -74,6 +75,16 @@ impl Verifier<Notarize> {
                 trace!("request path: {:?}", path);
                 if path.starts_with("https://swapi.dev/api/people/1") {
                 } else if path.starts_with("https://api.x.com/1.1/account/settings.json") {
+                } else if path.starts_with("https://bonfire.robinhood.com/portfolio/performance/") {
+                    let parsed: crate::tls::robinhood::Performance =
+                        serde_json::from_str(&body).unwrap();
+                    let amount = parsed.performance_baseline.amount;
+                    let currency = parsed.performance_baseline.currency_code;
+                    if currency == "USD" && amount > 10000.00 {
+                        let attestation = "amount>$10000.00";
+                        let signature = signer.sign(attestation.as_bytes());
+                        attestations.insert(attestation.to_string(), signature.into());
+                    }
                 } else if path.starts_with(
                     "https://x.com/i/api/graphql/Yka-W8dz7RaEuQNkroPkYw/UserByScreenName",
                 ) {
@@ -121,11 +132,13 @@ impl Verifier<Notarize> {
                 let signature = signer.sign(&hash);
                 info!("signing session");
                 let signed_session = SignedSession {
-                    application_data: hex::encode(hash),
+                    application_signed_data: hex::encode(hash),
                     signature: signature.into(),
                     attestations,
+                    application_data: hex::encode(data),
                 };
                 info!("sending signed session");
+
                 io.send(signed_session.clone()).await?;
                 info!(
                     "sent signed session {:?}",

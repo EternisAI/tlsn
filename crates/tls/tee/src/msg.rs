@@ -7,7 +7,7 @@ use crate::{
     follower::{
         ComputeClientKey, ComputeClientRandom, Decrypt, Encrypt, GetClientFinishedVd,
         ServerFinishedVd, SetCipherSuite, SetProtocolVersion, SetServerCertDetails,
-        SetServerKeyShare, SetServerKxDetails, SetServerRandom, ServerClosed
+        SetServerKeyShare, SetServerKxDetails, SetServerRandom, ServerClosed, AttestationDoc,
     },
     leader::{
         BackendMsgBufferIncoming, BackendMsgBufferLen, BackendMsgDecrypt, BackendMsgEncrypt,
@@ -26,6 +26,7 @@ use crate::{
 #[allow(missing_docs)]
 #[derive(Debug, Serialize, Deserialize)]
 pub enum TeeTlsMessage {
+    AttestationDoc(AttestationDoc),
     ServerClosed(ServerClosed),
     ServerFinishedVd(ServerFinishedVd),
     CloseConnection(CloseConnection),
@@ -48,6 +49,7 @@ impl TryFrom<TeeTlsMessage> for TeeTlsFollowerMsg {
     fn try_from(msg: TeeTlsMessage) -> Result<Self, Self::Error> {
         #[allow(unreachable_patterns)]
         match msg {
+            TeeTlsMessage::AttestationDoc(msg) => Ok(Self::AttestationDoc(msg)),
             TeeTlsMessage::ServerClosed(msg) => Ok(Self::ServerClosed(msg)),
             TeeTlsMessage::ServerFinishedVd(msg) => Ok(Self::ServerFinishedVd(msg)),
             TeeTlsMessage::Decrypt(msg) => Ok(Self::Decrypt(msg)),
@@ -106,6 +108,7 @@ pub enum TeeTlsLeaderMsg {
 #[allow(missing_docs)]
 #[ludi(return_attrs(allow(missing_docs)))]
 pub enum TeeTlsFollowerMsg {
+    AttestationDoc(AttestationDoc),
     ServerClosed(ServerClosed),
     ServerFinishedVd(ServerFinishedVd),
     Decrypt(Decrypt),
