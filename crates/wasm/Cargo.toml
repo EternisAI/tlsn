@@ -52,6 +52,6 @@ ws_stream_wasm = { git = "https://github.com/tlsnotary/ws_stream_wasm", rev = "2
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-rayon = { version = "1.0" }
 
-remote-attestation-verifier = { path = "../../../remote-attestation-verifier" }
+remote-attestation-verifier = { git = "https://github.com/EternisAI/remote-attestation-verifier", branch = "wasm-compatible" }
 base64 = "0.22.1"
 hex = "0.4.3"
