@@ -54,3 +54,4 @@ wasm-bindgen-rayon = { version = "1.0" }
 
 remote-attestation-verifier = { path = "../../../remote-attestation-verifier" }
 base64 = "0.22.1"
+hex = "0.4.3"

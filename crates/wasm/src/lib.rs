@@ -24,8 +24,8 @@ use tracing_web::MakeWebConsoleWriter;
 use wasm_bindgen::prelude::*;
 
 use base64::engine::{general_purpose::STANDARD, Engine};
+use hex;
 use remote_attestation_verifier::{parse_document, parse_payload, verify};
-
 #[cfg(feature = "test")]
 pub use tests::*;
 
@@ -81,8 +81,12 @@ pub struct AttestationDocument {
 }
 
 #[wasm_bindgen]
-pub fn verify_attestation_document(attestation_document: String) -> bool {
-    //info!("🔍 Starting verification..");
+pub fn verify_attestation_document(
+    attestation_document: String,
+    nonce: String,
+    timestamp: u64,
+) -> bool {
+    info!("🔍 Starting verification.. {:?}", attestation_document);
 
     let attestation_document =
         base64::decode(attestation_document).expect("failed to decode document");
@@ -90,17 +94,13 @@ pub fn verify_attestation_document(attestation_document: String) -> bool {
     let attestation_document =
         parse_document(&attestation_document).expect("parse cbor document failed");
 
+    let nonce = hex::decode(nonce).expect("decode nonce failed");
+
     let payload = parse_payload(&attestation_document.payload).expect("parse payload failed");
-    let verify_result = verify(
-        &attestation_document.protected,
-        &attestation_document.signature,
-        &attestation_document.payload,
-        &payload.certificate,
-    );
 
-    info!("payload: {:?}", payload);
+    let verify_result = verify(attestation_document, payload, nonce, timestamp, None);
 
-    info!("✅ Verification complete: {:?}", verify_result);
+    info!("verify_result: {:?}", verify_result);
 
     match verify_result {
         Ok(()) => true,
