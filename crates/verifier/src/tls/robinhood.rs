@@ -15,5 +15,5 @@ pub struct PerformanceBaseline {
     /// The currency ID
     pub currency_id: String,
     /// The amount
-    pub amount: f32,
+    pub amount: String,
 }
