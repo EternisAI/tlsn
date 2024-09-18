@@ -77,10 +77,12 @@ impl Verifier<Notarize> {
                 } else if path.starts_with("https://api.x.com/1.1/account/settings.json") {
                 } else if path.starts_with("https://bonfire.robinhood.com/portfolio/performance/") {
                     let parsed: crate::tls::robinhood::Performance =
-                        serde_json::from_str(&body).unwrap();
+                        serde_json::from_str(&body).expect("failed to parse robinhood response");
                     let amount = parsed.performance_baseline.amount;
                     let currency = parsed.performance_baseline.currency_code;
-                    if currency == "USD" && amount > 10000.00 {
+                    if currency == "USD"
+                        && amount.parse::<f64>().expect("failed to parse amount") > 10000.00
+                    {
                         let attestation = "amount>$10000.00";
                         let signature = signer.sign(attestation.as_bytes());
                         attestations.insert(attestation.to_string(), signature.into());
@@ -89,7 +91,7 @@ impl Verifier<Notarize> {
                     "https://x.com/i/api/graphql/Yka-W8dz7RaEuQNkroPkYw/UserByScreenName",
                 ) {
                     let parsed: crate::tls::x::UserByScreenName =
-                        serde_json::from_str(&body).unwrap();
+                        serde_json::from_str(&body).expect("failed to parse x.com response");
                     let statuses_count = parsed.data.user.result.legacy.statuses_count;
                     trace!("x.com statuses count: {:?}", statuses_count);
                     if statuses_count > 100 {
