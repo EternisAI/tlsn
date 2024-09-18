@@ -17,6 +17,9 @@ use crate::{io::FuturesIo, types::*};
 
 type Result<T> = std::result::Result<T, JsError>;
 
+use std::collections::HashMap;
+use tlsn_core::Signature;
+
 #[wasm_bindgen(js_name = Prover)]
 pub struct JsProver {
     state: State,
@@ -98,7 +101,7 @@ impl JsProver {
     }
 
     /// Runs the notarization protocol.
-    pub async fn notarize(&mut self) -> Result<SignedSession> {
+    pub async fn notarize(&mut self) -> Result<String> {
         info!("starting notarization");
 
         let prover = self.state.take().try_into_closed()?.start_notarize();
@@ -113,7 +116,17 @@ impl JsProver {
             notarized_session.application_data
         );
 
-        Ok(notarized_session.into())
+        let mut attestations_vec = Vec::new();
+        for (key, value) in notarized_session.attestations.iter() {
+            attestations_vec.push(format!("{}:{:?};", key, value));
+        }
+
+        Ok(format!(
+            "{:?}\r\n{}\r\n{}\r\n",
+            notarized_session.signature,
+            attestations_vec.join("\r\n"),
+            notarized_session.application_data
+        ))
     }
 }
 
