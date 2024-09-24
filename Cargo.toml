@@ -135,3 +135,4 @@ prometheus = { version = "0.13.4" }
 zeroize = { version = "1.8.1" }
 lazy_static = { version = "1.5.0" }
 base64 = "0.22.1"
+remote-attestation-verifier = { git = "https://github.com/eternisai/remote-attestation-verifier", branch = "wasm-compatible" }
