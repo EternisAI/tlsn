@@ -12,6 +12,7 @@ pub mod tests;
 pub mod types;
 pub mod verifier;
 
+use base64::engine::{general_purpose, Engine};
 use log::LoggingConfig;
 use tracing::{error, info};
 use tracing_subscriber::{
@@ -22,10 +23,8 @@ use tracing_subscriber::{
 };
 use tracing_web::MakeWebConsoleWriter;
 use wasm_bindgen::prelude::*;
-
-use base64::engine::{general_purpose::STANDARD, Engine};
 use hex;
-use remote_attestation_verifier::{parse_document, parse_payload, verify};
+use remote_attestation_verifier::parse_verify_with;
 #[cfg(feature = "test")]
 pub use tests::*;
 
@@ -84,21 +83,17 @@ pub struct AttestationDocument {
 pub fn verify_attestation_document(
     attestation_document: String,
     nonce: String,
+    pcrs: Vec<String>,
     timestamp: u64,
 ) -> bool {
     info!("🔍 Starting verification.. {:?}", attestation_document);
 
     let attestation_document =
-        base64::decode(attestation_document).expect("failed to decode document");
-
-    let attestation_document =
-        parse_document(&attestation_document).expect("parse cbor document failed");
+        general_purpose::STANDARD.decode(attestation_document).expect("failed to decode document");
 
     let nonce = hex::decode(nonce).expect("decode nonce failed");
 
-    let payload = parse_payload(&attestation_document.payload).expect("parse payload failed");
-
-    let verify_result = verify(attestation_document, payload, nonce, timestamp, None);
+    let verify_result = parse_verify_with(attestation_document, nonce, pcrs.into_iter().map(|s| hex::decode(s).expect("decode pcrs failed")).collect(), timestamp);
 
     info!("verify_result: {:?}", verify_result);
 

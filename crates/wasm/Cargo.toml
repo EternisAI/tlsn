@@ -48,10 +48,10 @@ wasm-bindgen = { version = "0.2" }
 wasm-bindgen-futures = { version = "0.4" }
 # Use the patched ws_stream_wasm to fix the issue https://github.com/najamelan/ws_stream_wasm/issues/12#issuecomment-1711902958
 ws_stream_wasm = { git = "https://github.com/tlsnotary/ws_stream_wasm", rev = "2ed12aad9f0236e5321f577672f309920b2aef51" }
+remote-attestation-verifier = { path = "../../../remote-attestation-verifier" }
+base64 = { workspace = true }
+hex = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-rayon = { version = "1.0" }
 
-remote-attestation-verifier = { git = "https://github.com/EternisAI/remote-attestation-verifier", branch = "wasm-compatible" }
-base64 = "0.22.1"
-hex = "0.4.3"

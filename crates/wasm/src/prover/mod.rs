@@ -17,9 +17,6 @@ use crate::{io::FuturesIo, types::*};
 
 type Result<T> = std::result::Result<T, JsError>;
 
-use std::collections::HashMap;
-use tlsn_core::Signature;
-
 #[wasm_bindgen(js_name = Prover)]
 pub struct JsProver {
     state: State,
