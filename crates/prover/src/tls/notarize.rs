@@ -4,7 +4,6 @@
 
 use super::{state::Notarize, Prover, ProverError};
 use serio::stream::IoStreamExt as _;
-use tls_client::sign;
 use tlsn_core::msg::SignedSession;
 use tracing::{debug, instrument};
 

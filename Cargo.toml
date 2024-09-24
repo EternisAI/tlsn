@@ -119,7 +119,7 @@ serde = { version = "1.0" }
 serde_json = { version = "1.0" }
 sha2 = { version = "0.10" }
 signature = { version = "2.2" }
-thiserror = { version = "1.0" }
+thiserror = { version = "1.0.64" }
 tokio = { version = "1.38" }
 tokio-rustls = { version = "0.24" }
 tokio-util = { version = "0.7" }
@@ -134,3 +134,5 @@ httparse = { version = "1.9.4" }
 prometheus = { version = "0.13.4" }
 zeroize = { version = "1.8.1" }
 lazy_static = { version = "1.5.0" }
+base64 = "0.22.1"
+remote-attestation-verifier = { version = "0.1.0" }
