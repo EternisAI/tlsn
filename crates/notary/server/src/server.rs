@@ -6,6 +6,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use bytes::Bytes;
 use eyre::{ensure, eyre, Result};
 use futures_util::future::poll_fn;
 use hyper::{body::Incoming, server::conn::http1};
@@ -31,7 +32,7 @@ use tower_service::Service;
 use tracing::{debug, error, info};
 
 use crate::{
-    config::{NotaryServerProperties, NotarySigningKeyProperties},
+    config::{NitridingProperties, NotaryServerProperties, NotarySigningKeyProperties},
     domain::{
         auth::{authorization_whitelist_vec_into_hashmap, AuthorizationWhitelistRecord},
         notary::NotaryGlobals,
@@ -42,6 +43,7 @@ use crate::{
     service::{initialize, upgrade_protocol},
     util::parse_csv_file,
 };
+use generic_array::GenericArray;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use metrics_process::Collector;
 use prometheus::{register_counter, register_gauge, Counter, Encoder, Gauge, TextEncoder};
@@ -75,7 +77,7 @@ impl Drop for TaskGuard {
 #[tracing::instrument(skip(config))]
 pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotaryServerError> {
     // Load the private key for notarized transcript signing
-    let notary_signing_key = load_notary_signing_key(&config.notary_key).await?;
+    let mut notary_signing_key = load_notary_signing_key(&config.notary_key).await?;
     // Build TLS acceptor if it is turned on
     let tls_acceptor = if !config.tls.enabled {
         debug!("Skipping TLS setup as it is turned off.");
@@ -108,6 +110,34 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
     if watcher.is_some() {
         debug!("Successfully setup watcher for hot reload of authorization whitelist!");
     }
+
+    // Load the nitriding config if it is turned on
+    let nitriding_config = load_nitriding_config(&config)?;
+    match nitriding_config {
+        Some(nitriding) => {
+            let np = NitridingProperties::new(nitriding);
+            np.signal_ready()
+                .await
+                .map_err(|e| NotaryServerError::Nitriding(e.to_string()))?;
+            if np.is_leader() {
+                let key = Bytes::copy_from_slice(notary_signing_key.to_bytes().as_slice());
+                np.set_state(key)
+                    .await
+                    .map_err(|e| NotaryServerError::Nitriding(e.to_string()))?;
+                debug!("Successfully set initial state for leader");
+            } else {
+                let key = np
+                    .get_state()
+                    .await
+                    .map_err(|e| NotaryServerError::Nitriding(e.to_string()))?;
+                debug!("Successfully loaded nitriding config with state: {:?}", key);
+                notary_signing_key =
+                    SigningKey::from_bytes(&GenericArray::clone_from_slice(&key[..]))
+                        .expect("Invalid key format"); // Adjust size as needed
+            }
+        }
+        None => (),
+    };
 
     let notary_address = SocketAddr::new(
         IpAddr::V4(config.server.host.parse().map_err(|err| {
@@ -249,7 +279,8 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
                             // use with_upgrades to upgrade connection to websocket for websocket clients
                             // and to extract tcp connection for tcp clients
                             .with_upgrades()
-                            .await.unwrap();
+                            .await
+                            .unwrap();
                     }
                     Err(err) => {
                         TOTAL_CONNECTION_ERROR_COUNTER.inc();
@@ -271,7 +302,8 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
                     // use with_upgrades to upgrade connection to websocket for websocket clients
                     // and to extract tcp connection for tcp clients
                     .with_upgrades()
-                    .await.unwrap();
+                    .await
+                    .unwrap();
             }
         });
     }
@@ -394,6 +426,19 @@ fn watch_and_reload_authorization_whitelist(
     };
     // Need to return the watcher to parent function, else it will be dropped and stop listening
     Ok(watcher)
+}
+
+/// Load nitriding config if it is turned on
+fn load_nitriding_config(config: &NotaryServerProperties) -> Result<Option<NitridingProperties>> {
+    let nitriding_config = if !config.nitriding.clone().enabled {
+        debug!("Skipping nitriding as it is turned off.");
+        None
+    } else {
+        Some(config.nitriding.clone())
+    };
+    let np =
+        NitridingProperties::new(nitriding_config.expect("Nitriding config should not be None"));
+    Ok(Some(np))
 }
 
 #[cfg(test)]

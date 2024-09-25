@@ -17,6 +17,8 @@ pub enum NotaryServerError {
     BadProverRequest(String),
     #[error("Unauthorized request from prover: {0}")]
     UnauthorizedProverRequest(String),
+    #[error("Error occurred during nitriding: {0}")]
+    Nitriding(String),
 }
 
 impl From<VerifierError> for NotaryServerError {
