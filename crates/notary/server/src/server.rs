@@ -116,9 +116,6 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
     match nitriding_config {
         Some(nitriding) => {
             let np = NitridingProperties::new(nitriding);
-            np.signal_ready()
-                .await
-                .map_err(|e| NotaryServerError::Nitriding(e.to_string()))?;
             if np.is_leader() {
                 let key = Bytes::copy_from_slice(notary_signing_key.to_bytes().as_slice());
                 np.set_state(key)
@@ -133,8 +130,11 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
                 debug!("Successfully loaded nitriding config with state: {:?}", key);
                 notary_signing_key =
                     SigningKey::from_bytes(&GenericArray::clone_from_slice(&key[..]))
-                        .expect("Invalid key format"); // Adjust size as needed
+                        .expect("Invalid key format");
             }
+            np.signal_ready()
+                .await
+                .map_err(|e| NotaryServerError::Nitriding(e.to_string()))?;
         }
         None => (),
     };
