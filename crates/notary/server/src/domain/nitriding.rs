@@ -2,6 +2,7 @@ use crate::config::NitridingProperties;
 use bytes::Bytes;
 use reqwest;
 use thiserror::Error;
+use tracing::debug;
 
 #[derive(Error, Debug)]
 pub enum NitridingError {
@@ -33,7 +34,8 @@ impl NitridingProperties {
             Ok(res) => res,
             Err(e) => return Err(NitridingError::SignalReadyError(e.to_string())),
         };
-
+        debug!("Nitriding signal ready response: {:?}", res.status());
+        
         if res.status().is_success() {
             Ok(())
         } else {
@@ -60,6 +62,8 @@ impl NitridingProperties {
             Ok(res) => res,
             Err(e) => return Err(NitridingError::GetStateError(e.to_string())),
         };
+
+        debug!("Nitriding get state response: {:?}", res.status());
 
         if res.status().is_success() {
             let body = res
@@ -88,6 +92,8 @@ impl NitridingProperties {
             Ok(res) => res,
             Err(e) => return Err(NitridingError::SetStateError(e.to_string())),
         };
+
+        debug!("Nitriding set state response: {:?}", res.status());
 
         if res.status().is_success() {
             Ok(())
