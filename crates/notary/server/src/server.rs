@@ -132,9 +132,6 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
                     SigningKey::from_bytes(&GenericArray::clone_from_slice(&key[..]))
                         .expect("Invalid key format");
             }
-            np.signal_ready()
-                .await
-                .map_err(|e| NotaryServerError::Nitriding(e.to_string()))?;
         }
         None => (),
     };
