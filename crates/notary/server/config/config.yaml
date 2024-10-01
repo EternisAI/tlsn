@@ -32,6 +32,6 @@ authorization:
 
 nitriding:
   enabled: true
-  role: "leader"
   host: "127.0.0.1"
-  port: 8080
+  int-port: 8080
+  ext-port: 443

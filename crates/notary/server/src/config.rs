@@ -78,7 +78,7 @@ pub struct LoggingProperties {
 #[serde(rename_all = "kebab-case")]
 pub struct NitridingProperties {
     pub enabled: bool,
-    pub role: String,
     pub host: String,
-    pub port: u16,
+    pub int_port: u16,
+    pub ext_port: u16,
 }

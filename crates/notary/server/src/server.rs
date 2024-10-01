@@ -117,7 +117,7 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
         Some(nitriding) => {
             debug!("Loading nitriding config");
             let np = NitridingProperties::new(nitriding);
-            if np.is_leader() {
+            if np.is_leader().await.expect("Failed to get leader status") {
                 debug!("Setting initial state for leader");
                 let key = Bytes::copy_from_slice(notary_signing_key.to_bytes().as_slice());
                 np.set_state(key)
