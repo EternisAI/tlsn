@@ -112,7 +112,7 @@ impl NitridingProperties {
     }
 
     pub async fn get_state(&self) -> Result<Bytes, NitridingError> {
-        if !self.is_leader().await.expect("Failed to get leader status") {
+        if self.is_leader().await.expect("Failed to get leader status") {
             return Err(NitridingError::GetStateError("Not a follower".to_string()));
         }
 
