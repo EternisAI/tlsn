@@ -115,25 +115,32 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
     let nitriding_config = load_nitriding_config(&config)?;
     match nitriding_config {
         Some(nitriding) => {
+            debug!("Loading nitriding config");
             let np = NitridingProperties::new(nitriding);
             if np.is_leader() {
+                debug!("Setting initial state for leader");
                 let key = Bytes::copy_from_slice(notary_signing_key.to_bytes().as_slice());
                 np.set_state(key)
                     .await
                     .map_err(|e| NotaryServerError::Nitriding(e.to_string()))?;
                 debug!("Successfully set initial state for leader");
             } else {
+                debug!("Loading nitriding config with state for follower");
                 let key = np
                     .get_state()
                     .await
                     .map_err(|e| NotaryServerError::Nitriding(e.to_string()))?;
                 debug!("Successfully loaded nitriding config with state: {:?}", key);
-                notary_signing_key =
-                    SigningKey::from_bytes(&GenericArray::clone_from_slice(&key[..]))
-                        .expect("Invalid key format");
+                // if key.len() > 0 {
+                //     notary_signing_key =
+                //         SigningKey::from_bytes(&GenericArray::clone_from_slice(&key[..]))
+                //             .expect("Invalid key format");
+                // }
             }
         }
-        None => (),
+        None => {
+            debug!("No nitriding config loaded");
+        },
     };
 
     let notary_address = SocketAddr::new(
