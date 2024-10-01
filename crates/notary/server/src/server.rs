@@ -35,6 +35,7 @@ use crate::{
     config::{NitridingProperties, NotaryServerProperties, NotarySigningKeyProperties},
     domain::{
         auth::{authorization_whitelist_vec_into_hashmap, AuthorizationWhitelistRecord},
+        nitriding::SyncState,
         notary::NotaryGlobals,
         InfoResponse,
     },
@@ -117,6 +118,12 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
         Some(nitriding) => {
             debug!("Loading nitriding config");
             let np = NitridingProperties::new(nitriding);
+            while np.get_sync_state().await.expect("Failed to get sync state")
+                == SyncState::InProgress
+            {
+                debug!("Waiting for sync to complete");
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            }
             if np.is_leader().await.expect("Failed to get leader status") {
                 debug!("Setting initial state for leader");
                 let key = Bytes::copy_from_slice(notary_signing_key.to_bytes().as_slice());
@@ -140,7 +147,7 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
         }
         None => {
             debug!("No nitriding config loaded");
-        },
+        }
     };
 
     let notary_address = SocketAddr::new(

@@ -19,12 +19,32 @@ pub enum NitridingError {
     SetStateError(String),
 }
 
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(from = "u8")]
+pub enum SyncState {
+    NoSync,
+    InProgress,
+    Leader,
+    Follower,
+    Unknown,
+}
+
+impl From<u8> for SyncState {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => SyncState::NoSync,
+            1 => SyncState::InProgress,
+            2 => SyncState::Leader,
+            3 => SyncState::Follower,
+            _ => SyncState::Unknown,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub struct NitridingConfig {
-    #[serde(rename = "FQDN")]
-    pub fqdn: String,
-    #[serde(rename = "FQDNLeader")]
-    pub fqdn_leader: String,
+    #[serde(rename = "SyncState")]
+    pub sync_state: SyncState,
 }
 
 impl NitridingProperties {
@@ -59,7 +79,7 @@ impl NitridingProperties {
         }
     }
 
-    pub async fn is_leader(&self) -> Result<bool, NitridingError> {
+    pub async fn get_sync_state(&self) -> Result<SyncState, NitridingError> {
         let mut client_builder = ClientBuilder::new().timeout(Duration::from_secs(10));
 
         client_builder = client_builder.danger_accept_invalid_certs(true);
@@ -85,7 +105,7 @@ impl NitridingProperties {
             let config: NitridingConfig = res.json().await.map_err(|e| {
                 NitridingError::GetConfigError(format!("Failed to parse JSON: {}", e))
             })?;
-            Ok(config.fqdn == config.fqdn_leader)
+            Ok(config.sync_state)
         } else {
             Err(NitridingError::GetConfigError(res.status().to_string()))
         }
@@ -150,5 +170,10 @@ impl NitridingProperties {
         } else {
             Err(NitridingError::SetStateError(res.status().to_string()))
         }
+    }
+
+    pub async fn is_leader(&self) -> Result<bool, NitridingError> {
+        let sync_state = self.get_sync_state().await?;
+        Ok(sync_state == SyncState::Leader)
     }
 }
