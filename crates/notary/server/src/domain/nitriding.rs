@@ -2,7 +2,7 @@ use crate::config::NitridingProperties;
 use bytes::Bytes;
 use reqwest;
 use reqwest::ClientBuilder;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use thiserror::Error;
 use tracing::debug;
@@ -19,13 +19,18 @@ pub enum NitridingError {
     SetStateError(String),
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Serialize)]
 #[serde(from = "u8")]
 pub enum SyncState {
+    #[serde(alias = "no-sync")]
     NoSync,
+    #[serde(alias = "in-progress")]
     InProgress,
+    #[serde(alias = "leader")]
     Leader,
+    #[serde(alias = "follower")]
     Follower,
+    #[serde(alias = "unknown")]
     Unknown,
 }
 

@@ -78,7 +78,7 @@ impl Drop for TaskGuard {
 #[tracing::instrument(skip(config))]
 pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotaryServerError> {
     // Load the private key for notarized transcript signing
-    let mut notary_signing_key = load_notary_signing_key(&config.notary_key).await?;
+    let notary_signing_key = load_notary_signing_key(&config.notary_key).await?;
     // Build TLS acceptor if it is turned on
     let tls_acceptor = if !config.tls.enabled {
         debug!("Skipping TLS setup as it is turned off.");
@@ -114,39 +114,41 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
 
     // Load the nitriding config if it is turned on
     let nitriding_config = load_nitriding_config(&config)?;
-    match nitriding_config {
+    let (key, sync_state) = match nitriding_config {
         Some(nitriding) => {
             debug!("Loading nitriding config");
             let np = NitridingProperties::new(nitriding);
-            while np.get_sync_state().await.expect("Failed to get sync state")
-                == SyncState::InProgress
-            {
+            let mut sync_state = np.get_sync_state().await.expect("Failed to get sync state");
+            while let SyncState::InProgress = sync_state {
                 debug!("Waiting for sync to complete");
                 tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                sync_state = np.get_sync_state().await.expect("Failed to get sync state");
             }
-            if np.is_leader().await.expect("Failed to get leader status") {
-                debug!("Setting initial state for leader");
-                let key = Bytes::copy_from_slice(notary_signing_key.to_bytes().as_slice());
-                np.set_state(key)
-                    .await
-                    .map_err(|e| NotaryServerError::Nitriding(e.to_string()))?;
-                debug!("Successfully set initial state for leader");
-            } else {
-                debug!("Loading nitriding config with state for follower");
-                let key = np
-                    .get_state()
-                    .await
-                    .map_err(|e| NotaryServerError::Nitriding(e.to_string()))?;
-                debug!("Successfully loaded nitriding config with state: {:?}", key);
-                // if key.len() > 0 {
-                //     notary_signing_key =
-                //         SigningKey::from_bytes(&GenericArray::clone_from_slice(&key[..]))
-                //             .expect("Invalid key format");
-                // }
+            match sync_state {
+                SyncState::Leader => {
+                    debug!("Setting initial state for leader");
+                    let key = Bytes::copy_from_slice(notary_signing_key.to_bytes().as_slice());
+                    np.set_state(key.clone())
+                        .await
+                        .map_err(|e| NotaryServerError::Nitriding(e.to_string()))?;
+                    debug!("Successfully set initial state for leader");
+                    (key, sync_state)
+                }
+                SyncState::Follower => {
+                    debug!("Loading nitriding config with state for follower");
+                    let key = np
+                        .get_state()
+                        .await
+                        .map_err(|e| NotaryServerError::Nitriding(e.to_string()))?;
+                    debug!("Successfully loaded nitriding config with state: {:?}", key);
+                    (key, sync_state)
+                }
+                _ => (Bytes::new(), sync_state),
             }
         }
         None => {
             debug!("No nitriding config loaded");
+            (Bytes::new(), SyncState::NoSync)
         }
     };
 
@@ -177,9 +179,13 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
     let git_commit_timestamp = env!("GIT_COMMIT_TIMESTAMP").to_string();
 
     // Parameters needed for the root / endpoint
+    let sync_state_string = serde_json::to_string(&sync_state).unwrap(); // Convert SyncState to String
+
     let html_string = config.server.html_info.clone();
     let html_info = Html(
         html_string
+            .replace("{sync_state}", &sync_state_string) // Convert SyncState to String
+            .replace("{synced_key}", &key.len().to_string())
             .replace("{version}", &version)
             .replace("{git_commit_hash}", &git_commit_hash)
             .replace("{git_commit_timestamp}", &git_commit_timestamp)
