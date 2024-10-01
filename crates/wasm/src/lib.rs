@@ -120,11 +120,39 @@ pub fn verify_attestation_document(
     }
 }
 
+#[wasm_bindgen]
+pub fn verify_attestation_signature(
+    hex_application_data: String,
+    hex_raw_signature: String,
+    hex_raw_public_key: String,
+) -> bool {
+    let bytes_public_key = hex::decode(hex_raw_public_key).expect("decode public key failed");
+
+    println!("bytes_public_key: {:?}", bytes_public_key);
+    let verifying_key = VerifyingKey::from_sec1_bytes(bytes_public_key.as_slice())
+        .expect("decode P256 public key failed");
+
+    //signature
+    let signature_bytes = hex::decode(hex_raw_signature).expect("decode signature failed");
+    println!("signature_bytes: {:?}", signature_bytes);
+
+    let signature = Signature::from_slice(&signature_bytes).expect("Failed to decode signature");
+
+    //message
+    use sha2::{Digest, Sha256};
+    let application_data = hex::decode(hex_application_data).expect("decode hex app data failed");
+    let mut hasher = Sha256::new();
+    hasher.update(&application_data);
+    let hash = hasher.finalize();
+
+    verifying_key.verify(&hash, &signature).is_ok()
+}
+
 mod test {
     use crate::*;
 
     #[test]
-    fn test_sign() {
+    fn test_sign_p256() {
         // Generate a random private key
         let signing_key = SigningKey::random(&mut OsRng);
 
@@ -150,14 +178,9 @@ mod test {
 
     #[test]
 
-    fn test_verify() {
+    fn test_verify_p256() {
         //notary public key in raw bytes format (not PEM)
-        let bytes_public_key = [
-            4, 6, 253, 250, 20, 142, 25, 22, 204, 201, 107, 64, 208, 20, 157, 240, 88, 37, 239, 84,
-            177, 107, 113, 28, 204, 27, 153, 26, 77, 225, 198, 161, 44, 195, 187, 167, 5, 171, 29,
-            238, 17, 102, 41, 20, 106, 58, 11, 65, 14, 82, 7, 254, 152, 72, 27, 146, 210, 235, 94,
-            135, 47, 231, 33, 243, 42,
-        ];
+        let bytes_public_key = hex::decode("0406fdfa148e1916ccc96b40d0149df05825ef54b16b711ccc1b991a4de1c6a12cc3bba705ab1dee116629146a3a0b410e5207fe98481b92d2eb5e872fe721f32a").expect("decode hex public key failed");
 
         println!("bytes_public_key: {:?}", bytes_public_key);
         let verifying_key = VerifyingKey::from_sec1_bytes(bytes_public_key.as_slice())
