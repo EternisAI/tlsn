@@ -115,6 +115,7 @@ impl JsProver {
 
         let mut attestations_vec = Vec::new();
         for (key, value) in notarized_session.attestations.iter() {
+            info!("attestation: {} {:?}", key, value);
             attestations_vec.push(format!("{}:{:?};", key, value));
         }
 
