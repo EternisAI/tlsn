@@ -46,3 +46,6 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 uuid = { workspace = true, features = ["v4", "fast-rng"] }
 ws_stream_tungstenite = { workspace = true, features = ["tokio_io"] }
+reqwest = { workspace = true, features = ["json"] }
+bytes = { workspace = true }
+generic-array = { workspace = true }

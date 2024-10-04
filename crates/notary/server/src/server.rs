@@ -6,6 +6,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use bytes::Bytes;
 use eyre::{ensure, eyre, Result};
 use futures_util::future::poll_fn;
 use hyper::{body::Incoming, server::conn::http1};
@@ -31,9 +32,10 @@ use tower_service::Service;
 use tracing::{debug, error, info};
 
 use crate::{
-    config::{NotaryServerProperties, NotarySigningKeyProperties},
+    config::{NitridingProperties, NotaryServerProperties, NotarySigningKeyProperties},
     domain::{
         auth::{authorization_whitelist_vec_into_hashmap, AuthorizationWhitelistRecord},
+        nitriding::SyncState,
         notary::NotaryGlobals,
         InfoResponse,
     },
@@ -42,6 +44,7 @@ use crate::{
     service::{initialize, upgrade_protocol},
     util::parse_csv_file,
 };
+use generic_array::GenericArray;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use metrics_process::Collector;
 use prometheus::{register_counter, register_gauge, Counter, Encoder, Gauge, TextEncoder};
@@ -109,6 +112,46 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
         debug!("Successfully setup watcher for hot reload of authorization whitelist!");
     }
 
+    // Load the nitriding config if it is turned on
+    let nitriding_config = load_nitriding_config(&config)?;
+    let (key, sync_state) = match nitriding_config {
+        Some(nitriding) => {
+            debug!("Loading nitriding config");
+            let np = NitridingProperties::new(nitriding);
+            let mut sync_state = np.get_sync_state().await.expect("Failed to get sync state");
+            while let SyncState::InProgress = sync_state {
+                debug!("Waiting for sync to complete");
+                tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+                sync_state = np.get_sync_state().await.expect("Failed to get sync state");
+            }
+            match sync_state {
+                SyncState::Leader => {
+                    debug!("Setting initial state for leader");
+                    let key = Bytes::copy_from_slice(notary_signing_key.to_bytes().as_slice());
+                    np.set_state(key.clone())
+                        .await
+                        .map_err(|e| NotaryServerError::Nitriding(e.to_string()))?;
+                    debug!("Successfully set initial state for leader");
+                    (key, sync_state)
+                }
+                SyncState::Follower => {
+                    debug!("Loading nitriding config with state for follower");
+                    let key = np
+                        .get_state()
+                        .await
+                        .map_err(|e| NotaryServerError::Nitriding(e.to_string()))?;
+                    debug!("Successfully loaded nitriding config with state: {:?}", key);
+                    (key, sync_state)
+                }
+                _ => (Bytes::new(), sync_state),
+            }
+        }
+        None => {
+            debug!("No nitriding config loaded");
+            (Bytes::new(), SyncState::NoSync)
+        }
+    };
+
     let notary_address = SocketAddr::new(
         IpAddr::V4(config.server.host.parse().map_err(|err| {
             eyre!("Failed to parse notary host address from server config: {err}")
@@ -136,9 +179,13 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
     let git_commit_timestamp = env!("GIT_COMMIT_TIMESTAMP").to_string();
 
     // Parameters needed for the root / endpoint
+    let sync_state_string = serde_json::to_string(&sync_state).unwrap(); // Convert SyncState to String
+
     let html_string = config.server.html_info.clone();
     let html_info = Html(
         html_string
+            .replace("{sync_state}", &sync_state_string) // Convert SyncState to String
+            .replace("{synced_key}", &key.len().to_string())
             .replace("{version}", &version)
             .replace("{git_commit_hash}", &git_commit_hash)
             .replace("{git_commit_timestamp}", &git_commit_timestamp)
@@ -249,7 +296,8 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
                             // use with_upgrades to upgrade connection to websocket for websocket clients
                             // and to extract tcp connection for tcp clients
                             .with_upgrades()
-                            .await.unwrap();
+                            .await
+                            .unwrap();
                     }
                     Err(err) => {
                         TOTAL_CONNECTION_ERROR_COUNTER.inc();
@@ -271,7 +319,8 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
                     // use with_upgrades to upgrade connection to websocket for websocket clients
                     // and to extract tcp connection for tcp clients
                     .with_upgrades()
-                    .await.unwrap();
+                    .await
+                    .unwrap();
             }
         });
     }
@@ -394,6 +443,19 @@ fn watch_and_reload_authorization_whitelist(
     };
     // Need to return the watcher to parent function, else it will be dropped and stop listening
     Ok(watcher)
+}
+
+/// Load nitriding config if it is turned on
+fn load_nitriding_config(config: &NotaryServerProperties) -> Result<Option<NitridingProperties>> {
+    let nitriding_config = if !config.nitriding.clone().enabled {
+        debug!("Skipping nitriding as it is turned off.");
+        None
+    } else {
+        Some(config.nitriding.clone())
+    };
+    let np =
+        NitridingProperties::new(nitriding_config.expect("Nitriding config should not be None"));
+    Ok(Some(np))
 }
 
 #[cfg(test)]
