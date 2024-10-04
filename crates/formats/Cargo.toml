@@ -3,6 +3,9 @@ name = "tlsn-formats"
 version = "0.1.0-alpha.6"
 edition = "2021"
 
+[features]
+mpz = []
+
 [dependencies]
 tlsn-core = { workspace = true }
 tlsn-utils = { workspace = true }

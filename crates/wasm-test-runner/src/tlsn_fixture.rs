@@ -2,8 +2,7 @@ use std::{env, net::IpAddr};
 
 use anyhow::Result;
 use futures::{AsyncReadExt, AsyncWriteExt, Future};
-use tls_core::{anchors::RootCertStore, verify::WebPkiVerifier};
-use tlsn_core::Direction;
+use tls_core::anchors::RootCertStore;
 use tlsn_prover::tls::{Prover, ProverConfig};
 use tlsn_server_fixture::{CA_CERT_DER, SERVER_DOMAIN};
 use tlsn_verifier::tls::{Verifier, VerifierConfig};
@@ -74,7 +73,6 @@ async fn handle_verifier(io: TcpStream) -> Result<()> {
         .id("test")
         .max_sent_data(1024)
         .max_recv_data(1024)
-        .cert_verifier(WebPkiVerifier::new(root_store, None))
         .build()
         .unwrap();
 
@@ -135,11 +133,8 @@ async fn handle_prover(io: TcpStream) -> Result<()> {
     let client_socket = TcpStream::connect((addr, port)).await.unwrap();
 
     let (mut tls_connection, prover_fut) = prover.connect(client_socket.compat()).await.unwrap();
-    let prover_ctrl = prover_fut.control();
+    let _prover_ctrl = prover_fut.control();
     let prover_task = tokio::spawn(prover_fut);
-
-    // Defer decryption until after the server closes the connection.
-    prover_ctrl.defer_decryption().await.unwrap();
 
     tls_connection
         .write_all(b"GET / HTTP/1.1\r\nConnection: close\r\n\r\n")
@@ -152,12 +147,6 @@ async fn handle_prover(io: TcpStream) -> Result<()> {
 
     let mut prover = prover_task.await.unwrap().unwrap().start_prove();
 
-    let sent_transcript_len = prover.sent_transcript().data().len();
-    let recv_transcript_len = prover.recv_transcript().data().len();
-
-    // Reveal parts of the transcript
-    _ = prover.reveal(0..sent_transcript_len - 1, Direction::Sent);
-    _ = prover.reveal(2..recv_transcript_len, Direction::Received);
     prover.prove().await.unwrap();
 
     prover.finalize().await.unwrap();

@@ -15,7 +15,6 @@ use tlsn_benches::{
     set_interface, PROVER_INTERFACE,
 };
 
-use tlsn_core::Direction;
 use tlsn_server_fixture::{CA_CERT_DER, SERVER_DOMAIN};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::{
@@ -130,7 +129,7 @@ async fn run_instance<S: AsyncWrite + AsyncRead + Send + Sync + Unpin + 'static>
 
     let (mut mpc_tls_connection, prover_fut) = prover.connect(client_conn.compat()).await.unwrap();
 
-    let prover_ctrl = prover_fut.control();
+    let _prover_ctrl = prover_fut.control();
     let prover_task = tokio::spawn(prover_fut);
 
     let request = format!(
@@ -138,10 +137,6 @@ async fn run_instance<S: AsyncWrite + AsyncRead + Send + Sync + Unpin + 'static>
         download_size,
         String::from_utf8(vec![0x42u8; upload_size]).unwrap(),
     );
-
-    if defer_decryption {
-        prover_ctrl.defer_decryption().await?;
-    }
 
     mpc_tls_connection.write_all(request.as_bytes()).await?;
     mpc_tls_connection.close().await?;
@@ -151,11 +146,11 @@ async fn run_instance<S: AsyncWrite + AsyncRead + Send + Sync + Unpin + 'static>
 
     let mut prover = prover_task.await??.start_prove();
 
-    prover.reveal(0..prover.sent_transcript().data().len(), Direction::Sent)?;
-    prover.reveal(
-        0..prover.recv_transcript().data().len(),
-        Direction::Received,
-    )?;
+    // prover.reveal(0..prover.sent_transcript().data().len(), Direction::Sent)?;
+    // prover.reveal(
+    //     0..prover.recv_transcript().data().len(),
+    //     Direction::Received,
+    // )?;
     prover.prove().await?;
     prover.finalize().await?;
 

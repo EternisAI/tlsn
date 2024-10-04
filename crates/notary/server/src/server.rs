@@ -42,6 +42,34 @@ use crate::{
     service::{initialize, upgrade_protocol},
     util::parse_csv_file,
 };
+use metrics_exporter_prometheus::PrometheusBuilder;
+use metrics_process::Collector;
+use prometheus::{register_counter, register_gauge, Counter, Encoder, Gauge, TextEncoder};
+use structopt::lazy_static::lazy_static;
+
+lazy_static! {
+    static ref TOTAL_CONNECTION_COUNTER: Counter =
+        register_counter!("total_connection_counter", "Total connections recorded").unwrap();
+    static ref TOTAL_CONNECTION_ERROR_COUNTER: Counter = register_counter!(
+        "total_connection_error_counter",
+        "Total connection error recorded"
+    )
+    .unwrap();
+    static ref ACTIVE_CONNECTION_COUNTER: Gauge =
+        register_gauge!("active_connection_gauge", "Active connections").unwrap();
+}
+
+struct TaskGuard {
+    gauge: Arc<Gauge>,
+}
+
+impl Drop for TaskGuard {
+    fn drop(&mut self) {
+        // Decrement the gauge when the guard is dropped
+        info!("dropped prover's TCP connection",);
+        self.gauge.dec();
+    }
+}
 
 /// Start a TCP server (with or without TLS) to accept notarization request for both TCP and WebSocket clients
 #[tracing::instrument(skip(config))]
@@ -117,6 +145,13 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
             .replace("{public_key}", &public_key),
     );
 
+    let builder = PrometheusBuilder::new();
+    let handle = builder
+        .install_recorder()
+        .expect("failed to install Prometheus recorder");
+    let collector = Collector::default();
+    collector.describe();
+
     let router = Router::new()
         .route(
             "/",
@@ -152,26 +187,51 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
             NotaryGlobals,
         >(notary_globals.clone()))
         .route("/notarize", get(upgrade_protocol))
+        .route(
+            "/app-metrics",
+            get(|| async move {
+                let mut buffer = vec![];
+                let metric_families = prometheus::gather();
+                let encoder = TextEncoder::new();
+                encoder.encode(&metric_families, &mut buffer).unwrap();
+                (StatusCode::OK, String::from_utf8(buffer).unwrap()).into_response()
+            }),
+        )
+        .route(
+            "/process-metrics",
+            get(move || {
+                collector.collect();
+                std::future::ready(handle.render())
+            }),
+        )
         .layer(CorsLayer::permissive())
         .with_state(notary_globals);
 
     loop {
         // Poll and await for any incoming connection, ensure that all operations inside are infallible to prevent bringing down the server
-        let stream = match poll_fn(|cx| Pin::new(&mut listener).poll_accept(cx)).await {
-            Ok((stream, _)) => stream,
-            Err(err) => {
-                error!("{}", NotaryServerError::Connection(err.to_string()));
-                continue;
-            }
-        };
+        let stream =
+            match poll_fn(|cx: &mut std::task::Context| Pin::new(&mut listener).poll_accept(cx))
+                .await
+            {
+                Ok((stream, _)) => stream,
+                Err(err) => {
+                    error!("{}", NotaryServerError::Connection(err.to_string()));
+                    TOTAL_CONNECTION_ERROR_COUNTER.inc();
+                    continue;
+                }
+            };
         debug!("Received a prover's TCP connection");
-
+        TOTAL_CONNECTION_COUNTER.inc();
         let tower_service = router.clone();
         let tls_acceptor = tls_acceptor.clone();
         let protocol = protocol.clone();
 
         // Spawn a new async task to handle the new connection
         tokio::spawn(async move {
+            ACTIVE_CONNECTION_COUNTER.inc();
+            let _guard = TaskGuard {
+                gauge: Arc::new(ACTIVE_CONNECTION_COUNTER.clone()),
+            };
             // When TLS is enabled
             if let Some(acceptor) = tls_acceptor {
                 match acceptor.accept(stream).await {
@@ -189,9 +249,10 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
                             // use with_upgrades to upgrade connection to websocket for websocket clients
                             // and to extract tcp connection for tcp clients
                             .with_upgrades()
-                            .await;
+                            .await.unwrap();
                     }
                     Err(err) => {
+                        TOTAL_CONNECTION_ERROR_COUNTER.inc();
                         error!("{}", NotaryServerError::Connection(err.to_string()));
                     }
                 }
@@ -210,7 +271,7 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
                     // use with_upgrades to upgrade connection to websocket for websocket clients
                     // and to extract tcp connection for tcp clients
                     .with_upgrades()
-                    .await;
+                    .await.unwrap();
             }
         });
     }
