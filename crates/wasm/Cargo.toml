@@ -54,6 +54,7 @@ remote-attestation-verifier = { workspace = true }
 p256 = { workspace = true }
 rand_core = { workspace = true }
 sha2 = { workspace = true }
+regex = "1.11.0"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-rayon = { version = "1.0" }
