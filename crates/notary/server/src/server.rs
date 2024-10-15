@@ -40,7 +40,7 @@ use crate::{
     error::NotaryServerError,
     middleware::AuthorizationMiddleware,
     service::{initialize, upgrade_protocol},
-    util::parse_csv_file,
+    util::parse_csv_file, ProviderConfig,
 };
 use metrics_exporter_prometheus::PrometheusBuilder;
 use metrics_process::Collector;
@@ -98,6 +98,9 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
         let tls_config = Arc::new(server_config);
         Some(TlsAcceptor::from(tls_config))
     };
+
+    let provider_config = ProviderConfig::new(config.provider.url.clone(), config.provider.schema_url.clone()).await;
+    debug!("Provider config: {provider_config:#?}");
 
     // Load the authorization whitelist csv if it is turned on
     let authorization_whitelist =
