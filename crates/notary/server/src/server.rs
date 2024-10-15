@@ -15,6 +15,7 @@ use notify::{
 };
 use p256::{ecdsa::SigningKey, pkcs8::DecodePrivateKey};
 use rustls::{Certificate, PrivateKey, ServerConfig};
+use tlsn_verifier::provider::Processor;
 use std::{
     collections::HashMap,
     fs::File as StdFile,
@@ -40,7 +41,7 @@ use crate::{
     error::NotaryServerError,
     middleware::AuthorizationMiddleware,
     service::{initialize, upgrade_protocol},
-    util::parse_csv_file, ProviderConfig,
+    util::parse_csv_file
 };
 use metrics_exporter_prometheus::PrometheusBuilder;
 use metrics_process::Collector;
@@ -99,8 +100,8 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
         Some(TlsAcceptor::from(tls_config))
     };
 
-    let provider_config = ProviderConfig::new(config.provider.url.clone(), config.provider.schema_url.clone()).await;
-    debug!("Provider config: {provider_config:#?}");
+    let provider_processor = Processor::new(config.provider.url.clone(), config.provider.schema_url.clone()).await;
+    debug!("Provider config: {provider_processor:#?}");
 
     // Load the authorization whitelist csv if it is turned on
     let authorization_whitelist =
@@ -129,6 +130,7 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
         notary_signing_key,
         config.notarization.clone(),
         authorization_whitelist,
+        provider_processor,
     );
 
     // Parameters needed for the info endpoint

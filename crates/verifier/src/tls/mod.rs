@@ -6,11 +6,6 @@ mod notarize;
 pub mod state;
 mod verify;
 
-/// This module provides functionality for X.
-pub mod x;
-/// This module provides functionality for Robinhood.
-pub mod robinhood;
-
 pub use config::{VerifierConfig, VerifierConfigBuilder, VerifierConfigBuilderError};
 pub use error::VerifierError;
 use prometheus::{register_histogram, Histogram};
@@ -29,6 +24,8 @@ use tlsn_core::{msg::SignedSession, Signature};
 
 use lazy_static::lazy_static;
 use tracing::{debug, info, info_span, instrument, Span};
+
+use crate::provider::Processor;
 
 lazy_static! {
     static ref TLS_SESSION_HISTOGRAM: Histogram = register_histogram!(
@@ -114,6 +111,7 @@ impl Verifier<state::Initialized> {
         self,
         socket: S,
         signer: &impl Signer<T>,
+        provider: &Processor,
     ) -> Result<SignedSession, VerifierError>
     where
         T: Into<Signature>,
@@ -123,7 +121,7 @@ impl Verifier<state::Initialized> {
             .run()
             .await?
             .start_notarize()
-            .finalize(signer)
+            .finalize(signer, provider)
             .await
     }
 

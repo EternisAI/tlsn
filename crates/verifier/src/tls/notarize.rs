@@ -3,6 +3,7 @@
 //! The TLS verifier is only a notary.
 
 use std::collections::HashMap;
+use crate::provider::Processor;
 
 use super::{state::Notarize, Verifier, VerifierError};
 use httparse::{Request, Response, Status};
@@ -32,7 +33,7 @@ impl Verifier<Notarize> {
     ///
     /// * `signer` - The signer used to sign the notarization result.
     #[instrument(parent = &self.span, level = "debug", skip_all, err)]
-    pub async fn finalize<T>(self, signer: &impl Signer<T>) -> Result<SignedSession, VerifierError>
+    pub async fn finalize<T>(self, signer: &impl Signer<T>, provider: &Processor) -> Result<SignedSession, VerifierError>
     where
         T: Into<Signature>,
     {
@@ -73,49 +74,10 @@ impl Verifier<Notarize> {
         match request.path {
             Some(path) => {
                 trace!("request path: {:?}", path);
-                if path.starts_with("https://swapi.dev/api/people/1") {
-                } else if path.starts_with("https://api.x.com/1.1/account/settings.json") {
-                } else if path.starts_with("https://bonfire.robinhood.com/portfolio/performance/") {
-                    let parsed: crate::tls::robinhood::Performance =
-                        serde_json::from_str(&body).expect("failed to parse robinhood response");
-                    let amount = parsed.performance_baseline.amount;
-                    let currency = parsed.performance_baseline.currency_code;
-                    if currency == "USD"
-                        && amount.parse::<f64>().expect("failed to parse amount") > 10000.00
-                    {
-                        let attestation = "amount>$10000.00";
-                        let signature = signer.sign(attestation.as_bytes());
-                        attestations.insert(attestation.to_string(), signature.into());
-                    }
-                } else if path.starts_with(
-                    "https://x.com/i/api/graphql/Yka-W8dz7RaEuQNkroPkYw/UserByScreenName",
-                ) {
-                    let parsed: crate::tls::x::UserByScreenName =
-                        serde_json::from_str(&body).expect("failed to parse x.com response");
-                    let statuses_count = parsed.data.user.result.legacy.statuses_count;
-                    trace!("x.com statuses count: {:?}", statuses_count);
-                    if statuses_count > 100 {
-                        trace!("statuses count greater than 100");
-                        let attestation = "statuses>100";
-                        let signature = signer.sign(attestation.as_bytes());
-                        attestations.insert(attestation.to_string(), signature.into());
-                    }
-
-                    let screen_name = parsed.data.user.result.legacy.screen_name;
-                    let attestation = format!("screen_name={}", screen_name);
-                    let signature = signer.sign(attestation.as_bytes());
-                    attestations.insert(attestation.to_string(), signature.into());
-
-                    let followers_count = parsed.data.user.result.legacy.followers_count;
-                    trace!("x.com follower count: {:?}", followers_count);
-                    if followers_count > 100 {
-                        trace!("follower count greater than 100");
-                        let attestation = "followers>100";
-                        let signature = signer.sign(attestation.as_bytes());
-                        attestations.insert(attestation.to_string(), signature.into());
-                    }
-                } else {
-                    trace!("request path not found");
+                let attributes = provider.process(path, request.method.expect("method not found"), &body);
+                for attribute in attributes {
+                    let signature = signer.sign(attribute.as_bytes());
+                    attestations.insert(attribute, signature.into());
                 }
             }
             None => {

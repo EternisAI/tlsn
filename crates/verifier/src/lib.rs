@@ -5,3 +5,5 @@
 #![forbid(unsafe_code)]
 
 pub mod tls;
+
+pub mod provider;

@@ -31,5 +31,5 @@ authorization:
   whitelist-csv-path: "./fixture/auth/whitelist.csv"
 
 provider:
-  url: "https://raw.githubusercontent.com/EternisAI/notary-cdk/refs/heads/main/assets/provider-example.json?token=GHSAT0AAAAAACUTEB4GQKBV4AK4UKFVTPWAZYNU2MQ"
-  schema-url: "https://raw.githubusercontent.com/EternisAI/notary-cdk/refs/heads/main/assets/provider-schema.json?token=GHSAT0AAAAAACUTEB4GPG6TRJJQIUV2AQ3CZYNU2EQ"
+  url: "https://eternis-extension-providers.s3.us-east-1.amazonaws.com/test/provider-example.json"
+  schema-url: "https://eternis-extension-providers.s3.us-east-1.amazonaws.com/test/provider-schema.json"
