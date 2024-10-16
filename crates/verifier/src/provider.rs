@@ -1,5 +1,6 @@
 //! Provider configuration for the verifier
 
+use boa_engine::{js_str, property::Attribute, Context, JsValue, Source};
 use jmespath::{self};
 use regex::Regex;
 use reqwest;
@@ -78,15 +79,19 @@ impl Processor {
         let mut result: Vec<String> = Vec::new();
         for provider in self.config.providers.clone() {
             if provider.check_url_method(url, method) {
-                if provider.response_type == "json" {
+                let attributes = if provider.response_type != "json" {
+                    let processed_response = provider
+                        .preprocess_response(response)
+                        .expect("Failed to preprocess response");
+                    provider.get_attributes(&processed_response)
+                } else {
                     let response_json =
-                        serde_json::from_str(response).expect("Failed to parse response text");
-                    let attributes = provider.get_attributes(&response_json);
-                    for attribute in attributes {
-                        let attribute_str = attribute.to_string();
-                        result.push(attribute_str);
-                    }
-                } else if provider.response_type == "text" {
+                        serde_json::from_str(response).expect("Failed to parse response as JSON");
+                    provider.get_attributes(&response_json)
+                };
+                for attribute in attributes {
+                    let attribute_str = attribute.to_string();
+                    result.push(attribute_str);
                 }
             }
         }
@@ -164,6 +169,34 @@ impl Provider {
         }
     }
 
+    /// Preprocess the response using the preprocess JMESPath expression
+    pub fn preprocess_response(&self, response: &str) -> Result<Value, Box<dyn std::error::Error>> {
+        if let Some(preprocess) = self.preprocess.clone() {
+            let mut context = Context::default();
+            context
+                .eval(Source::from_bytes(preprocess.as_bytes()))
+                .expect("Failed to compile preprocess");
+
+            let js_string = JsValue::String(response.to_string().into());
+            context
+                .register_global_property(js_str!("response"), js_string, Attribute::all())
+                .expect("Failed to register global property");
+
+            let value = context
+                .eval(Source::from_bytes("convertToJson(response)"))
+                .expect("Failed to execute preprocess");
+            let json = value
+                .to_json(&mut context)
+                .expect("Failed to convert to json");
+            println!("preprocess result: {:?}", json);
+            return Ok(json);
+        }
+        return Err(Box::new(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "No preprocess",
+        )));
+    }
+
     /// Get the attributes from the response using the JMESPath expressions
     pub fn get_attributes(&self, response: &serde_json::Value) -> Vec<String> {
         let mut result: Vec<String> = Vec::new();
@@ -209,7 +242,7 @@ pub struct Config {
 mod tests {
     use super::*;
 
-    const PROVIDER_TEXT: &str = r#"{
+    const JSON_PROVIDER_TEXT: &str = r#"{
       "id": 7,
       "host": "github.com",
       "urlRegex": "^https:\\/\\/api\\.github\\.com\\/users\\/[a-zA-Z0-9]+(\\?.*)?$",
@@ -222,10 +255,24 @@ mod tests {
       "attributes": ["{followers: followers, following: following}", "{public_repos: public_repos}", "{is_active: sum([followers, following]) > public_repos}"]
     }"#;
 
+    const TEXT_PROVIDER_TEXT: &str = r#"{
+        "id": 7,
+        "host": "chase.com",
+        "urlRegex": "^https:\\/\\/api\\.chase\\.com\\/users\\/[a-zA-Z0-9]+(\\?.*)?$",
+        "targetUrl": "https://github.com",
+        "method": "GET",
+        "title": "Github profile",
+        "description": "Go to your profile",
+        "icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",  
+        "responseType": "text",
+        "preprocess": "function convertToJson(htmlString) { const getValueById = (id) => { const regex = new RegExp(`<h1 id=\"${id}\">(.*?)</h1>`, 'i'); const match = htmlString.match(regex); return match ? parseInt(match[1], 10) : null; }; return { followers: getValueById('followers'), following: getValueById('following'), public_repos: getValueById('public_repos') }; }",
+        "attributes": ["{followers: followers, following: following, public_repos: public_repos}"]
+    }"#;
+
     #[test]
     fn test_check_url_method() {
         let provider: Provider =
-            serde_json::from_str(PROVIDER_TEXT).expect("Failed to parse provider");
+            serde_json::from_str(JSON_PROVIDER_TEXT).expect("Failed to parse provider");
         let provider = Provider::new(
             provider.id,
             provider.host,
@@ -246,9 +293,9 @@ mod tests {
     }
 
     #[test]
-    fn test_new_provider() {
+    fn test_provider_json() {
         let provider: Provider =
-            serde_json::from_str(PROVIDER_TEXT).expect("Failed to parse provider");
+            serde_json::from_str(JSON_PROVIDER_TEXT).expect("Failed to parse provider");
         let provider = Provider::new(
             provider.id,
             provider.host,
@@ -277,6 +324,37 @@ mod tests {
         let parsed_response: serde_json::Value =
             serde_json::from_str(response_text).expect("Failed to parse response text");
         let result = provider.get_attributes(&parsed_response);
+        println!("result: {:?}", result);
+    }
+
+    #[test]
+    fn test_provider_text() {
+        let provider: Provider =
+            serde_json::from_str(TEXT_PROVIDER_TEXT).expect("Failed to parse provider");
+        let provider = Provider::new(
+            provider.id,
+            provider.host,
+            provider.url_regex,
+            provider.target_url,
+            provider.method,
+            provider.title,
+            provider.description,
+            provider.icon,
+            provider.response_type,
+            provider.attributes,
+            provider.preprocess,
+        );
+        let response_text = r#"<html>
+            <body>
+                <h1 id="followers">94</h1>
+                <h1 id="following">80</h1>
+                <h1 id="public_repos">47</h1>
+            </body>
+        </html>"#;
+        let result = provider
+            .preprocess_response(response_text)
+            .expect("Failed to preprocess response");
+        let result = provider.get_attributes(&result);
         println!("result: {:?}", result);
     }
 }
