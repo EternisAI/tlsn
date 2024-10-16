@@ -255,20 +255,6 @@ mod tests {
       "attributes": ["{followers: followers, following: following}", "{public_repos: public_repos}", "{is_active: sum([followers, following]) > public_repos}"]
     }"#;
 
-    const TEXT_PROVIDER_TEXT: &str = r#"{
-        "id": 7,
-        "host": "chase.com",
-        "urlRegex": "^https:\\/\\/api\\.chase\\.com\\/users\\/[a-zA-Z0-9]+(\\?.*)?$",
-        "targetUrl": "https://github.com",
-        "method": "GET",
-        "title": "Github profile",
-        "description": "Go to your profile",
-        "icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",  
-        "responseType": "text",
-        "preprocess": "function convertToJson(htmlString) { const getValueById = (id) => { const regex = new RegExp(`<h1 id=\"${id}\">(.*?)</h1>`, 'i'); const match = htmlString.match(regex); return match ? parseInt(match[1], 10) : null; }; return { followers: getValueById('followers'), following: getValueById('following'), public_repos: getValueById('public_repos') }; }",
-        "attributes": ["{followers: followers, following: following, public_repos: public_repos}"]
-    }"#;
-
     #[test]
     fn test_check_url_method() {
         let provider: Provider =
@@ -326,6 +312,20 @@ mod tests {
         let result = provider.get_attributes(&parsed_response);
         println!("result: {:?}", result);
     }
+
+    const TEXT_PROVIDER_TEXT: &str = r#"{
+        "id": 7,
+        "host": "chase.com",
+        "urlRegex": "^https:\\/\\/api\\.chase\\.com\\/users\\/[a-zA-Z0-9]+(\\?.*)?$",
+        "targetUrl": "https://github.com",
+        "method": "GET",
+        "title": "Github profile",
+        "description": "Go to your profile",
+        "icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",  
+        "responseType": "text",
+        "preprocess": "function convertToJson(htmlString) { const getValueById = (id) => { const regex = new RegExp(`<h1 id=\"${id}\">(.*?)</h1>`, 'i'); const match = htmlString.match(regex); return match ? parseInt(match[1], 10) : null; }; return { followers: getValueById('followers'), following: getValueById('following'), public_repos: getValueById('public_repos') }; }",
+        "attributes": ["{total: sum([followers, following])}"]
+    }"#;
 
     #[test]
     fn test_provider_text() {
