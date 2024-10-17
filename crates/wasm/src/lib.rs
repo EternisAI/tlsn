@@ -67,7 +67,7 @@ pub fn init_logging(config: Option<LoggingConfig>) {
         .try_init();
 
     if res.is_err() {
-        error!("Failed to initialize logging: {:?}", res.err());
+        info!("Failed to initialize logging: {:?}", res.err());
     }
 
     // https://github.com/rustwasm/console_error_panic_hook
