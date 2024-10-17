@@ -240,49 +240,4 @@ mod test {
 
         assert!(verifying_key.verify(&application_data, &signature).is_ok());
     }
-
-    #[test]
-    fn test_regex() {
-        use regex::Regex;
-
-        let re = Regex::new(
-            "^https:\\/\\/api\\.(x|twitter)\\.com\\/1\\.1\\/account\\/settings\\.json(\\?.*)?$",
-        )
-        .unwrap();
-        let test_str = "https://api.twitter.com/1.1/account/settings.json";
-        let result = re.is_match(test_str);
-        assert!(result);
-
-        let re =
-            Regex::new("^https:\\/\\/bonfire\\.robinhood\\.com\\/portfolio\\/performance\\/[a-zA-Z0-9]+(\\?.*)?$")
-                .unwrap();
-        let test_str = "https://bonfire.robinhood.com/portfolio/performance/2";
-        let result = re.is_match(test_str);
-        assert!(result, "robinhood not working");
-
-        let re = Regex::new("^https:\\/\\/bonfire\\.robinhood\\.com\\/portfolio\\/performance.*")
-            .unwrap();
-        let test_str = "https://bonfire.robinhood.com/portfolio/performance/2";
-        let result = re.is_match(test_str);
-        assert!(result, "robinhood fixed url not working");
-
-        let re = Regex::new(
-            "^https:\\/\\/assure.ameli\\.fr\\/PortailAS\\/appmanager\\/PortailAS\\/assure.*",
-        )
-        .unwrap();
-        let test_str = "https://assure.ameli.fr/PortailAS/appmanager/PortailAS/assure?_nfpb=true&_pageLabel=as_info_perso_book";
-        let result = re.is_match(test_str);
-        assert!(result, "ameli not working");
-
-        let re = Regex::new("^https:\\/\\/www\\.reddit\\.com\\/user\\/[a-zA-Z0-9]+.*").unwrap();
-        let test_str = "https://www.reddit.com/user/PangeaDev/";
-        let result = re.is_match(test_str);
-        assert!(result, "reddit not working");
-
-        let re =
-            Regex::new("^https:\\/\\/www\\.ubereats\\.com\\/_p\\/api\\/getPastOrdersV1.*").unwrap();
-        let test_str = "https://www.ubereats.com/_p/api/getPastOrdersV1";
-        let result = re.is_match(test_str);
-        assert!(result, "ubereats not working");
-    }
 }
