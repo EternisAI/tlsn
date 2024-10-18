@@ -79,16 +79,10 @@ impl Processor {
         let mut result: Vec<String> = Vec::new();
         for provider in self.config.providers.clone() {
             if provider.check_url_method(url, method) {
-                let attributes = if provider.response_type != "json" {
-                    let processed_response = provider
-                        .preprocess_response(response)
-                        .expect("Failed to preprocess response");
-                    provider.get_attributes(&processed_response)
-                } else {
-                    let response_json =
-                        serde_json::from_str(response).expect("Failed to parse response as JSON");
-                    provider.get_attributes(&response_json)
-                };
+                let processed_response = provider
+                    .preprocess_response(response)
+                    .expect("Failed to preprocess response");
+                let attributes = provider.get_attributes(&processed_response);
                 for attribute in attributes {
                     let attribute_str = attribute.to_string();
                     result.push(attribute_str);
@@ -183,7 +177,7 @@ impl Provider {
                 .expect("Failed to register global property");
 
             let value = context
-                .eval(Source::from_bytes("convertToJson(response)"))
+                .eval(Source::from_bytes("process(response)"))
                 .expect("Failed to execute preprocess");
             let json = value
                 .to_json(&mut context)
@@ -191,10 +185,7 @@ impl Provider {
             println!("preprocess result: {:?}", json);
             return Ok(json);
         }
-        return Err(Box::new(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "No preprocess",
-        )));
+        return Ok(serde_json::from_str(response).expect("Failed to parse response as JSON"));
     }
 
     /// Get the attributes from the response using the JMESPath expressions
@@ -309,6 +300,7 @@ mod tests {
         }"#;
         let parsed_response: serde_json::Value =
             serde_json::from_str(response_text).expect("Failed to parse response text");
+        let processed_response = provider.preprocess_response(&parsed_response.to_string()).expect("Failed to preprocess response");
         let result = provider.get_attributes(&parsed_response);
         println!("result: {:?}", result);
     }
@@ -323,7 +315,7 @@ mod tests {
         "description": "Go to your profile",
         "icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",  
         "responseType": "text",
-        "preprocess": "function convertToJson(htmlString) { const getValueById = (id) => { const regex = new RegExp(`<h1 id=\"${id}\">(.*?)</h1>`, 'i'); const match = htmlString.match(regex); return match ? parseInt(match[1], 10) : null; }; return { followers: getValueById('followers'), following: getValueById('following'), public_repos: getValueById('public_repos') }; }",
+        "preprocess": "function process(htmlString) { const getValueById = (id) => { const regex = new RegExp(`<h1 id=\"${id}\">(.*?)</h1>`, 'i'); const match = htmlString.match(regex); return match ? parseInt(match[1], 10) : null; }; return { followers: getValueById('followers'), following: getValueById('following'), public_repos: getValueById('public_repos') }; }",
         "attributes": ["{total: sum([followers, following])}"]
     }"#;
 
@@ -357,4 +349,57 @@ mod tests {
         let result = provider.get_attributes(&result);
         println!("result: {:?}", result);
     }
+
+    const SSA_PROVIDER_TEXT: &str = r#"{
+        "id": 4,
+        "host": "secure.ssa.gov",
+        "urlRegex": "https://secure.ssa.gov/myssa/myprofile-api/profileInfo",
+        "targetUrl": "https://secure.ssa.gov/myssa/myprofile-ui/main",
+        "method": "GET",
+        "transport": "xmlhttprequest",
+        "title": "US SSA",
+        "description": "Go to your profile",
+        "icon": "https://brandslogos.com/wp-content/uploads/images/large/us-social-security-administration-logo-black-and-white.png",
+        "responseType": "json",
+        "attributes": ["{age: age, isValid: length(loggedInUserInfo.cossn) == `11` } "],
+        "preprocess": "function process(jsonString) { const s = JSON.parse(jsonString); const currentDate = new Date(); const currentYear = currentDate.getFullYear(); let age = currentYear - s.loggedInUserInfo.dobYear; const currentMonth = currentDate.getMonth(); const currentDay = currentDate.getDate(); if (currentMonth === 0 && currentDay < 1) { age--; } s.age = age; return s; }"
+      }"#;
+  
+      #[test]
+      fn test_ssa_provider() {
+          let provider: Provider =
+              serde_json::from_str(SSA_PROVIDER_TEXT).expect("Failed to parse provider");
+          let provider = Provider::new(provider.id, provider.host, provider.url_regex, provider.target_url, provider.method, provider.title, provider.description, provider.icon, provider.response_type, provider.attributes, provider.preprocess);
+  
+          let response_text = r#"{
+              "responseStatus": {
+                "returnCode": "0000",
+                "reasonCode": "0000",
+                "reasonDescription": "Successfully obtained the profile info"
+              },
+              "urlPath": "/myssa/bec-plan-prep-ui/",
+              "loggedInUserInfo": {
+                  "cossn": "***-**-9999",
+                  "name": {
+                    "firstName": "JOHN",
+                    "middleName": "",
+                    "lastName": "DOE",
+                    "suffix": ""
+                  },
+                  "formattedName": "John Doe",
+                  "otherServicesInd": "N",
+                  "messageCount": "",
+                  "dobYear": "1999",
+                  "dobMonth": "09",
+                  "dobDay": "09",
+                  "contactDisplayInd": "N",
+                  "bankingDisplayInd": "N"
+              }
+          }"#;
+          let parsed_response: serde_json::Value =
+              serde_json::from_str(response_text).expect("Failed to parse response text");
+          let processed_response = provider.preprocess_response(&parsed_response.to_string()).expect("Failed to preprocess response");
+          let result = provider.get_attributes(&processed_response);
+          println!("result: {:?}", result);
+      }
 }
