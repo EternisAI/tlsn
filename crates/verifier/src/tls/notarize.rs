@@ -74,7 +74,12 @@ impl Verifier<Notarize> {
         match request.path {
             Some(path) => {
                 trace!("request path: {:?}", path);
-                let attributes = provider.process(path, request.method.expect("method not found"), &body);
+                let attributes = match provider.process(path, request.method.expect("method not found"), &body) {
+                    Ok(attributes) => attributes,
+                    Err(e) => {
+                        return Err(VerifierError::ProviderError(e));
+                    }
+                };
                 for attribute in attributes {
                     let signature = signer.sign(attribute.as_bytes());
                     attestations.insert(attribute, signature.into());
