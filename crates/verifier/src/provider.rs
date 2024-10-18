@@ -339,7 +339,8 @@ pub struct Config {
 #[cfg(test)]
 mod tests {
     use super::*;
-    // use tokio;
+    #[cfg(feature = "provider")]
+    use tokio;
 
     const MISSING_ATTRIBUTES_PROVIDER_TEXT: &str = r#"{
         "id": 7,
@@ -524,18 +525,19 @@ mod tests {
         assert!(result.contains(&"isValid: true".to_string()));
     }
 
-    // #[tokio::test]
-    // async fn test_processor() {
-    //     let processor = Processor::new("https://eternis-extension-providers.s3.us-east-1.amazonaws.com/test/provider-example.json".to_string(), "https://eternis-extension-providers.s3.us-east-1.amazonaws.com/test/provider-schema.json".to_string()).await.expect("Failed to initialize processor");
-    //     let result = processor
-    //         .process(
-    //             "https://secure.ssa.gov/myssa/myprofile-api/profileInfo",
-    //             "GET",
-    //             SSA_RESPONSE_TEXT,
-    //         )
-    //         .expect("Failed to process");
-    //     assert_eq!(result.len(), 2);
-    //     assert!(result.contains(&"age: 25.0".to_string()));
-    //     assert!(result.contains(&"isValid: true".to_string()));
-    // }
+    #[cfg(feature = "provider")]
+    #[tokio::test]
+    async fn test_processor() {
+        let processor = Processor::new("https://eternis-extension-providers.s3.us-east-1.amazonaws.com/test/provider-example.json".to_string(), "https://eternis-extension-providers.s3.us-east-1.amazonaws.com/test/provider-schema.json".to_string()).await.expect("Failed to initialize processor");
+        let result = processor
+            .process(
+                "https://secure.ssa.gov/myssa/myprofile-api/profileInfo",
+                "GET",
+                SSA_RESPONSE_TEXT,
+            )
+            .expect("Failed to process");
+        assert_eq!(result.len(), 2);
+        assert!(result.contains(&"age: 25.0".to_string()));
+        assert!(result.contains(&"isValid: true".to_string()));
+    }
 }
