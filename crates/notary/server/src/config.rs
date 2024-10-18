@@ -15,6 +15,8 @@ pub struct NotaryServerProperties {
     pub logging: LoggingProperties,
     /// Setting for authorization
     pub authorization: AuthorizationProperties,
+    /// Setting for provider
+    pub provider: ProviderProperties,
 }
 
 #[derive(Clone, Debug, Deserialize, Default)]
@@ -70,4 +72,11 @@ pub struct LoggingProperties {
     /// Custom filtering logic, refer to the syntax here https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html#example-syntax
     /// This will override the default filtering logic above
     pub filter: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Default)]
+#[serde(rename_all = "kebab-case")]
+pub struct ProviderProperties {
+    pub url: String,
+    pub schema_url: String,
 }

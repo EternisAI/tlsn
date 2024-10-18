@@ -24,7 +24,7 @@ tlsn-core = { path = "../core" }
 tlsn-prover = { path = "../prover" }
 tlsn-tls-client-async = { path = "../tls/client-async" }
 tlsn-tls-core = { path = "../tls/core" }
-tlsn-verifier = { path = "../verifier" }
+tlsn-verifier = { path = "../verifier", default-features = false }
 
 bincode = { workspace = true }
 console_error_panic_hook = { version = "0.1" }

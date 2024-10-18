@@ -10,7 +10,7 @@ use axum::{
 };
 use axum_macros::debug_handler;
 use p256::ecdsa::{Signature, SigningKey};
-use tlsn_verifier::tls::{Verifier, VerifierConfig};
+use tlsn_verifier::{provider::Processor, tls::{Verifier, VerifierConfig}};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::compat::TokioAsyncReadCompatExt;
 use tracing::{debug, error, info, trace};
@@ -186,6 +186,7 @@ pub async fn initialize(
 pub async fn notary_service<T: AsyncWrite + AsyncRead + Send + Unpin + 'static>(
     socket: T,
     signing_key: &SigningKey,
+    provider: &Processor,
     session_id: &str,
     max_sent_data: Option<usize>,
     max_recv_data: Option<usize>,
@@ -208,7 +209,7 @@ pub async fn notary_service<T: AsyncWrite + AsyncRead + Send + Unpin + 'static>(
     let config = config_builder.build()?;
 
     Verifier::new(config)
-        .notarize::<_, Signature>(socket.compat(), signing_key)
+        .notarize::<_, Signature>(socket.compat(), signing_key, provider)
         .await?;
     timer.stop_and_record();
     Ok(())

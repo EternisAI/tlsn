@@ -20,6 +20,7 @@ pub async fn websocket_notarize(
     match notary_service(
         stream,
         &notary_globals.notary_signing_key,
+        &notary_globals.provider_processor,
         &session_id,
         max_sent_data,
         max_recv_data,
