@@ -5,6 +5,14 @@ use jmespath::{self};
 use regex::Regex;
 use reqwest;
 use serde_json::{self, Value};
+use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
+use std::collections::HashMap;
+
+thread_local! {
+    static COMPILED_ATTRIBUTES_CACHE: RefCell<HashMap<u32, Vec<jmespath::Expression<'static>>>> = RefCell::new(HashMap::new());
+    static COMPILED_REGEX_CACHE: RefCell<HashMap<u32, Regex>> = RefCell::new(HashMap::new());
+}
 
 /// Processor is the processor configuration for the verifier
 #[derive(Debug, Clone)]
@@ -38,9 +46,6 @@ impl Processor {
             .await
             .expect("Failed to parse data content as JSON");
 
-        let config_json: Config = serde_json::from_value(data_json.clone())
-            .expect("Failed to parse data content as JSON");
-
         // Validate data_json against schema_json
         let compiled_schema =
             jsonschema::Validator::new(&schema_json).expect("Invalid JSON schema");
@@ -52,21 +57,9 @@ impl Processor {
             );
         }
 
-        for provider in config_json.providers.clone() {
-            Provider::new(
-                provider.id,
-                provider.host,
-                provider.url_regex,
-                provider.target_url,
-                provider.method,
-                provider.title,
-                provider.description,
-                provider.icon,
-                provider.response_type,
-                provider.attributes.clone(),
-                provider.preprocess,
-            );
-        }
+        let config_json: Config = serde_json::from_value(data_json)
+            .expect("Failed to parse data content as JSON");
+
         Self {
             url,
             schema_url,
@@ -77,7 +70,7 @@ impl Processor {
     /// Process the response using the providers
     pub fn process(&self, url: &str, method: &str, response: &str) -> Vec<String> {
         let mut result: Vec<String> = Vec::new();
-        for provider in self.config.providers.clone() {
+        for provider in &self.config.providers {
             if provider.check_url_method(url, method) {
                 let processed_response = provider
                     .preprocess_response(response)
@@ -92,8 +85,6 @@ impl Processor {
         return result;
     }
 }
-
-use serde::{Deserialize, Serialize};
 
 /// Provider is the provider configuration for the verifier
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -126,41 +117,39 @@ pub struct Provider {
 }
 
 impl Provider {
-    /// Create a new provider
-    pub fn new(
-        id: u32,
-        host: String,
-        url_regex: String,
-        target_url: String,
-        method: String,
-        title: String,
-        description: String,
-        icon: String,
-        response_type: String,
-        attributes: Option<Vec<String>>,
-        preprocess: Option<String>,
-    ) -> Self {
-        // let mut compiled_attributes: Vec<jmespath::Expression> = Vec::new();
-        if let Some(attributes) = attributes.clone() {
-            for attribute in attributes {
-                if attribute != "" {
-                    jmespath::compile(&attribute).expect("Invalid JMESPath expression");
-                }
+    /// Get the compiled attributes from the JMESPath expressions
+    fn get_compiled_attributes(&self) -> Vec<jmespath::Expression<'static>> {
+        // Use the thread-local cache
+        COMPILED_ATTRIBUTES_CACHE.with(|cache| {
+            let mut cache = cache.borrow_mut();
+            if let Some(compiled_exprs) = cache.get(&self.id) {
+                // Return the cached compiled expressions
+                compiled_exprs.clone()
+            } else {
+                // Compile the expressions and store them in the cache
+                let compiled_exprs = self.attributes.as_ref().unwrap_or(&Vec::new()).iter()
+                    .filter(|attr| !attr.is_empty())
+                    .map(|attr| jmespath::compile(attr).expect("Invalid JMESPath expression"))
+                    .collect::<Vec<_>>();
+                // Cache the compiled expressions
+                cache.insert(self.id, compiled_exprs.clone());
+                compiled_exprs
             }
-        }
-        Self {
-            id,
-            host,
-            url_regex,
-            target_url,
-            method,
-            title,
-            description,
-            icon,
-            response_type,
-            attributes,
-            preprocess,
-        }
+        })
+    }
+
+    /// Get the compiled regex from the thread-local cache
+    fn get_compiled_regex(&self) -> Regex {
+        COMPILED_REGEX_CACHE.with(|cache| {
+            let mut cache = cache.borrow_mut();
+            if let Some(compiled_regex) = cache.get(&self.id) {
+                compiled_regex.clone()
+            } else {
+                let regex = Regex::new(&self.url_regex).expect("Invalid regex");
+                cache.insert(self.id, regex.clone());
+                regex
+            }
+        })
     }
 
     /// Preprocess the response using the preprocess JMESPath expression
@@ -191,27 +180,22 @@ impl Provider {
     /// Get the attributes from the response using the JMESPath expressions
     pub fn get_attributes(&self, response: &serde_json::Value) -> Vec<String> {
         let mut result: Vec<String> = Vec::new();
-        if let Some(attributes) = self.attributes.clone() {
-            for attribute in attributes {
-                let compiled_jmespath =
-                    jmespath::compile(&attribute).expect("Invalid JMESPath expression");
-                let search_result = compiled_jmespath
-                    .search(&response)
-                    .expect("Failed to execute jmespath search");
-                if let Some(result_map) = search_result.as_object() {
-                    // Iterate over the dynamic keys and values in the result
-                    for (key, value) in result_map {
-                        result.push(format!("{}: {}", key, value.to_string()));
-                    }
+        for compiled_jmespath in self.get_compiled_attributes() {
+            let search_result = compiled_jmespath
+                .search(response)
+                .expect("Failed to execute jmespath search");
+            if let Some(result_map) = search_result.as_object() {
+                for (key, value) in result_map {
+                    result.push(format!("{}: {}", key, value.to_string()));
                 }
             }
         }
-        return result;
+        result
     }
 
     /// Check if the url and method match the provider's url_regex and method
     pub fn check_url_method(&self, url: &str, method: &str) -> bool {
-        let regex = Regex::new(&self.url_regex).expect("Invalid regex");
+        let regex = self.get_compiled_regex();
         return regex.is_match(url) && self.method == method;
     }
 }
@@ -250,19 +234,6 @@ mod tests {
     fn test_check_url_method() {
         let provider: Provider =
             serde_json::from_str(JSON_PROVIDER_TEXT).expect("Failed to parse provider");
-        let provider = Provider::new(
-            provider.id,
-            provider.host,
-            provider.url_regex,
-            provider.target_url,
-            provider.method,
-            provider.title,
-            provider.description,
-            provider.icon,
-            provider.response_type,
-            provider.attributes,
-            provider.preprocess,
-        );
         assert!(provider.check_url_method("https://api.github.com/users/saberistic", "GET"));
         assert!(
             !provider.check_url_method("https://api.github.com/users/saberistic/followers", "GET")
@@ -273,19 +244,6 @@ mod tests {
     fn test_provider_json() {
         let provider: Provider =
             serde_json::from_str(JSON_PROVIDER_TEXT).expect("Failed to parse provider");
-        let provider = Provider::new(
-            provider.id,
-            provider.host,
-            provider.url_regex,
-            provider.target_url,
-            provider.method,
-            provider.title,
-            provider.description,
-            provider.icon,
-            provider.response_type,
-            provider.attributes,
-            provider.preprocess,
-        );
         println!("provider: {:?}", provider);
 
         let response_text = r#"{
@@ -301,7 +259,7 @@ mod tests {
         let parsed_response: serde_json::Value =
             serde_json::from_str(response_text).expect("Failed to parse response text");
         let processed_response = provider.preprocess_response(&parsed_response.to_string()).expect("Failed to preprocess response");
-        let result = provider.get_attributes(&parsed_response);
+        let result = provider.get_attributes(&processed_response);
         println!("result: {:?}", result);
     }
 
@@ -323,19 +281,6 @@ mod tests {
     fn test_provider_text() {
         let provider: Provider =
             serde_json::from_str(TEXT_PROVIDER_TEXT).expect("Failed to parse provider");
-        let provider = Provider::new(
-            provider.id,
-            provider.host,
-            provider.url_regex,
-            provider.target_url,
-            provider.method,
-            provider.title,
-            provider.description,
-            provider.icon,
-            provider.response_type,
-            provider.attributes,
-            provider.preprocess,
-        );
         let response_text = r#"<html>
             <body>
                 <h1 id="followers">94</h1>
@@ -362,16 +307,16 @@ mod tests {
         "icon": "https://brandslogos.com/wp-content/uploads/images/large/us-social-security-administration-logo-black-and-white.png",
         "responseType": "json",
         "attributes": ["{age: age, isValid: length(loggedInUserInfo.cossn) == `11` } "],
-        "preprocess": "function process(jsonString) { const s = JSON.parse(jsonString); const currentDate = new Date(); const currentYear = currentDate.getFullYear(); let age = currentYear - s.loggedInUserInfo.dobYear; const currentMonth = currentDate.getMonth(); const currentDay = currentDate.getDate(); if (currentMonth === 0 && currentDay < 1) { age--; } s.age = age; return s; }"
+        "preprocess": "function process(jsonString) { const startIndex = jsonString.indexOf('{'); const endIndex = jsonString.lastIndexOf('}') + 1; if (startIndex === -1 || endIndex === 0) { return {}; } try { const cleanedResponse = jsonString.slice(startIndex, endIndex); const s = JSON.parse(cleanedResponse); const currentDate = new Date(); const currentYear = currentDate.getFullYear(); let age = currentYear - s.loggedInUserInfo.dobYear; const currentMonth = currentDate.getMonth(); const currentDay = currentDate.getDate(); if (currentMonth === 0 && currentDay < 1) { age--; } s.age = age; return s; } catch (e) { return {}; }  }"
       }"#;
   
       #[test]
       fn test_ssa_provider() {
           let provider: Provider =
               serde_json::from_str(SSA_PROVIDER_TEXT).expect("Failed to parse provider");
-          let provider = Provider::new(provider.id, provider.host, provider.url_regex, provider.target_url, provider.method, provider.title, provider.description, provider.icon, provider.response_type, provider.attributes, provider.preprocess);
-  
-          let response_text = r#"{
+          let response_text = r#"
+          1e0
+          {
               "responseStatus": {
                 "returnCode": "0000",
                 "reasonCode": "0000",
@@ -395,10 +340,9 @@ mod tests {
                   "contactDisplayInd": "N",
                   "bankingDisplayInd": "N"
               }
-          }"#;
-          let parsed_response: serde_json::Value =
-              serde_json::from_str(response_text).expect("Failed to parse response text");
-          let processed_response = provider.preprocess_response(&parsed_response.to_string()).expect("Failed to preprocess response");
+          }
+          0"#;
+          let processed_response = provider.preprocess_response(&response_text).expect("Failed to preprocess response");
           let result = provider.get_attributes(&processed_response);
           println!("result: {:?}", result);
       }
