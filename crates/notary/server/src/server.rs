@@ -100,7 +100,7 @@ pub async fn run_server(config: &NotaryServerProperties) -> Result<(), NotarySer
         Some(TlsAcceptor::from(tls_config))
     };
 
-    let provider_processor = Processor::new(config.provider.url.clone(), config.provider.schema_url.clone()).await;
+    let provider_processor = Processor::new(config.provider.url.clone(), config.provider.schema_url.clone()).await.map_err(|e| eyre!("Failed to initialize provider: {}", e))?;
     debug!("Provider config: {provider_processor:#?}");
 
     // Load the authorization whitelist csv if it is turned on
