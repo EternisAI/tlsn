@@ -216,6 +216,7 @@ pub struct Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use tokio;
 
     const JSON_PROVIDER_TEXT: &str = r#"{
       "id": 7,
@@ -309,12 +310,8 @@ mod tests {
         "attributes": ["{age: age, isValid: length(loggedInUserInfo.cossn) == `11` } "],
         "preprocess": "function process(jsonString) { const startIndex = jsonString.indexOf('{'); const endIndex = jsonString.lastIndexOf('}') + 1; if (startIndex === -1 || endIndex === 0) { return {}; } try { const cleanedResponse = jsonString.slice(startIndex, endIndex); const s = JSON.parse(cleanedResponse); const currentDate = new Date(); const currentYear = currentDate.getFullYear(); let age = currentYear - s.loggedInUserInfo.dobYear; const currentMonth = currentDate.getMonth(); const currentDay = currentDate.getDate(); if (currentMonth === 0 && currentDay < 1) { age--; } s.age = age; return s; } catch (e) { return {}; }  }"
       }"#;
-  
-      #[test]
-      fn test_ssa_provider() {
-          let provider: Provider =
-              serde_json::from_str(SSA_PROVIDER_TEXT).expect("Failed to parse provider");
-          let response_text = r#"
+
+      const SSA_RESPONSE_TEXT: &str = r#"
           1e0
           {
               "responseStatus": {
@@ -342,8 +339,20 @@ mod tests {
               }
           }
           0"#;
-          let processed_response = provider.preprocess_response(&response_text).expect("Failed to preprocess response");
+  
+      #[test]
+      fn test_ssa_provider() {
+          let provider: Provider =
+              serde_json::from_str(SSA_PROVIDER_TEXT).expect("Failed to parse provider");
+          let processed_response = provider.preprocess_response(&SSA_RESPONSE_TEXT).expect("Failed to preprocess response");
           let result = provider.get_attributes(&processed_response);
           println!("result: {:?}", result);
+      }
+
+    #[tokio::test]
+    async fn test_processor() {
+        let processor = Processor::new("https://eternis-extension-providers.s3.us-east-1.amazonaws.com/test/provider-example.json".to_string(), "https://eternis-extension-providers.s3.us-east-1.amazonaws.com/test/provider-schema.json".to_string()).await;
+        let result = processor.process("https://secure.ssa.gov/myssa/myprofile-api/profileInfo", "GET", SSA_RESPONSE_TEXT);
+        println!("result: {:?}", result);
       }
 }
