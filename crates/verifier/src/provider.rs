@@ -95,7 +95,7 @@ impl Processor {
         let compiled_schema = jsonschema::Validator::new(&schema_json)
             .map_err(|e| ProviderError::SchemaError(e.to_string()))?;
 
-        if let Err(errors) = compiled_schema.validate(&data_json.clone()) {
+        if let Err(errors) = compiled_schema.validate(&data_json) {
             return Err(ProviderError::ValidationError(
                 errors.map(|e| e.to_string()).collect::<Vec<_>>().join(", "),
             )
@@ -138,6 +138,7 @@ impl Processor {
                             return Err(ProviderError::ProcessError(e.to_string()));
                         }
                     }
+                    break;
                 }
                 Ok(false) => {
                     tracing::debug!("Skipping provider: {}", provider.id);
@@ -184,15 +185,16 @@ pub struct Provider {
 
 impl Provider {
     /// Get the compiled attributes from the JMESPath expressions
-    fn get_compiled_attributes(
-        &self,
-    ) -> Result<Vec<jmespath::Expression<'static>>, ProviderError> {
+    fn get_compiled_attributes<F>(&self, f: F) -> Result<Vec<String>, ProviderError>
+    where
+        F: FnOnce(&Vec<jmespath::Expression<'static>>) -> Result<Vec<String>, ProviderError>,
+    {
         // Use the thread-local cache
         COMPILED_ATTRIBUTES_CACHE.with(|cache| {
             let mut cache = cache.borrow_mut();
             if let Some(compiled_exprs) = cache.get(&self.id) {
                 // Return the cached compiled expressions
-                Ok(compiled_exprs.clone())
+                return f(compiled_exprs);
             } else {
                 // Compile the expressions and store them in the cache
                 let compiled_exprs = self
@@ -207,23 +209,36 @@ impl Provider {
                     })
                     .collect::<Result<Vec<_>, _>>()?;
                 // Cache the compiled expressions
-                cache.insert(self.id, compiled_exprs.clone());
-                Ok(compiled_exprs)
+                cache.insert(self.id, compiled_exprs);
+                if let Some(compiled_exprs) = cache.get(&self.id) {
+                    return f(compiled_exprs);
+                }
+                return Err(ProviderError::CacheError(
+                    "Failed to get compiled attributes".to_string(),
+                ));
             }
         })
     }
 
     /// Get the compiled regex from the thread-local cache
-    fn get_compiled_regex(&self) -> Result<Regex, ProviderError> {
+    fn get_compiled_regex<F>(&self, f: F) -> Result<bool, ProviderError>
+    where
+        F: FnOnce(&Regex) -> Result<bool, ProviderError>,
+    {
         COMPILED_REGEX_CACHE.with(|cache| {
             let mut cache = cache.borrow_mut();
             if let Some(compiled_regex) = cache.get(&self.id) {
-                Ok(compiled_regex.clone())
+                return f(compiled_regex);
             } else {
                 let regex = Regex::new(&self.url_regex)
                     .map_err(|e| ProviderError::InvalidRegex(self.url_regex.to_string(), e))?;
-                cache.insert(self.id, regex.clone());
-                Ok(regex)
+                cache.insert(self.id, regex);
+                if let Some(compiled_regex) = cache.get(&self.id) {
+                    return f(compiled_regex);
+                }
+                return Err(ProviderError::CacheError(
+                    "Failed to get compiled regex".to_string(),
+                ));
             }
         })
     }
@@ -248,7 +263,9 @@ impl Provider {
             if let Some(context) = cache.get_mut(&self.id) {
                 return f(context);
             }
-            Err(ProviderError::CacheError("Failed to get compiled preprocess".to_string()))
+            Err(ProviderError::CacheError(
+                "Failed to get compiled preprocess".to_string(),
+            ))
         })
     }
 
@@ -258,11 +275,7 @@ impl Provider {
             return self.get_compiled_preprocess(|context| {
                 let js_string = JsValue::String(response.to_string().into());
                 context
-                    .register_global_property(
-                        js_str!("response"),
-                        js_string.clone(),
-                        Attribute::all(),
-                    )
+                    .register_global_property(js_str!("response"), js_string, Attribute::all())
                     .map_err(|e| ProviderError::PreprocessError(e.to_string()))?;
 
                 let value = context
@@ -275,8 +288,7 @@ impl Provider {
                 Ok(json)
             });
         }
-        Ok(serde_json::from_str(response)
-            .map_err(|e| ProviderError::JsonParseError(e))?)
+        Ok(serde_json::from_str(response).map_err(|e| ProviderError::JsonParseError(e))?)
     }
 
     /// Get the attributes from the response using the JMESPath expressions
@@ -285,36 +297,24 @@ impl Provider {
         response: &serde_json::Value,
     ) -> Result<Vec<String>, ProviderError> {
         let mut result: Vec<String> = Vec::new();
-        match self.get_compiled_attributes() {
-            Ok(compiled_jmespaths) => {
-                for compiled_jmespath in compiled_jmespaths {
-                    let search_result = compiled_jmespath
-                        .search(response)
-                        .map_err(|e| ProviderError::JmespathError(e.to_string()))?;
-                    if let Some(result_map) = search_result.as_object() {
-                        for (key, value) in result_map {
-                            result.push(format!("{}: {}", key, value.to_string()));
-                        }
+        self.get_compiled_attributes(|compiled_jmespaths| {
+            for compiled_jmespath in compiled_jmespaths {
+                let search_result = compiled_jmespath
+                    .search(response)
+                    .map_err(|e| ProviderError::JmespathError(e.to_string()))?;
+                if let Some(result_map) = search_result.as_object() {
+                    for (key, value) in result_map {
+                        result.push(format!("{}: {}", key, value.to_string()));
                     }
                 }
             }
-            Err(e) => {
-                tracing::error!("Failed to get compiled attributes: {}", e);
-                return Err(ProviderError::CacheError(e.to_string()).into());
-            }
-        }
-        Ok(result)
+            Ok(result)
+        })
     }
 
     /// Check if the url and method match the provider's url_regex and method
     pub fn check_url_method(&self, url: &str, method: &str) -> Result<bool, ProviderError> {
-        match self.get_compiled_regex() {
-            Ok(regex) => Ok(regex.is_match(url) && self.method == method),
-            Err(e) => {
-                tracing::error!("Failed to get compiled regex: {}", e);
-                return Err(ProviderError::CacheError(e.to_string()).into());
-            }
-        }
+        self.get_compiled_regex(|regex| Ok(regex.is_match(url) && self.method == method))
     }
 }
 
@@ -350,8 +350,8 @@ mod tests {
 
     #[test]
     fn test_missing_attributes_provider() {
-        let provider: Provider =
-            serde_json::from_str(MISSING_ATTRIBUTES_PROVIDER_TEXT).expect("Failed to parse provider");
+        let provider: Provider = serde_json::from_str(MISSING_ATTRIBUTES_PROVIDER_TEXT)
+            .expect("Failed to parse provider");
         let response_text = r#"{
             "login": "saberistic",
             "id": 4715448,    
