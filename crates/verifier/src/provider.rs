@@ -8,10 +8,12 @@ use serde_json::{self, Value};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::error::Error;
 
 thread_local! {
     static COMPILED_ATTRIBUTES_CACHE: RefCell<HashMap<u32, Vec<jmespath::Expression<'static>>>> = RefCell::new(HashMap::new());
     static COMPILED_REGEX_CACHE: RefCell<HashMap<u32, Regex>> = RefCell::new(HashMap::new());
+    static COMPILED_PREPROCESS_CACHE: RefCell<HashMap<u32, Context>> = RefCell::new(HashMap::new());
 }
 
 /// Processor is the processor configuration for the verifier
@@ -152,27 +154,44 @@ impl Provider {
         })
     }
 
+    /// Get the compiled preprocess from the thread-local cache
+    fn get_compiled_preprocess<F, R>(&self, f: F) -> Result<Value, Box<dyn Error>>
+    where
+        F: FnOnce(&mut Context) -> Result<Value, Box<dyn Error>>,
+    {
+        COMPILED_PREPROCESS_CACHE.with(|cache| {
+            let mut cache = cache.borrow_mut();
+            if let Some(context) = cache.get_mut(&self.id) {
+                return f(context);
+            }
+            let mut context = Context::default();
+            if let Some(preprocess) = &self.preprocess {
+                context.eval(Source::from_bytes(preprocess)).expect("Failed to compile preprocess");
+            }
+            cache.insert(self.id, context);
+            let context = &mut cache.get_mut(&self.id).unwrap();
+            f(context)
+        })
+    }
+
     /// Preprocess the response using the preprocess JMESPath expression
     pub fn preprocess_response(&self, response: &str) -> Result<Value, Box<dyn std::error::Error>> {
-        if let Some(preprocess) = self.preprocess.clone() {
-            let mut context = Context::default();
-            context
-                .eval(Source::from_bytes(preprocess.as_bytes()))
-                .expect("Failed to compile preprocess");
+        if let Some(_preprocess) = &self.preprocess {
+            return self.get_compiled_preprocess::<_, Result<Value, Box<dyn Error>>>(|context| {
+                let js_string = JsValue::String(response.to_string().into());
+                context
+                    .register_global_property(js_str!("response"), js_string.clone(), Attribute::all())
+                    .expect("Failed to register global property");
 
-            let js_string = JsValue::String(response.to_string().into());
-            context
-                .register_global_property(js_str!("response"), js_string, Attribute::all())
-                .expect("Failed to register global property");
-
-            let value = context
-                .eval(Source::from_bytes("process(response)"))
-                .expect("Failed to execute preprocess");
-            let json = value
-                .to_json(&mut context)
-                .expect("Failed to convert to json");
-            println!("preprocess result: {:?}", json);
-            return Ok(json);
+                let value = context
+                    .eval(Source::from_bytes("process(response)"))
+                    .expect("Failed to execute preprocess");
+                let json = value
+                    .to_json(context)
+                    .expect("Failed to convert to json");
+                println!("preprocess result: {:?}", json);
+                Ok(json)
+            });
         }
         return Ok(serde_json::from_str(response).expect("Failed to parse response as JSON"));
     }
