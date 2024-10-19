@@ -122,7 +122,7 @@ impl JsProver {
                 json!({
                     "attribute_name": key,
                     "attribute_hex": hex::encode(key.as_bytes()),
-                    "signature": format!("{:?}", hex::encode(value.to_bytes())),
+                    "signature": format!("{}", hex::encode(value.to_bytes())),
                 })
                 .to_string(),
             );
@@ -134,8 +134,9 @@ impl JsProver {
 
         let serialized = json!({
             "application_data": notarized_session.application_data,
-            "signature": format!("{:?}", hex::encode(notarized_session.signature.to_bytes())),
-            "attributes": attestations_vec,
+            "signature": format!("{}", hex::encode(notarized_session.signature.to_bytes())),
+            "attributes": attestations_vec
+
         })
         .to_string();
 
