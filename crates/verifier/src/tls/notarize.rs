@@ -87,9 +87,7 @@ impl Verifier<Notarize> {
                         let signature = signer.sign(attestation.as_bytes());
                         attestations.insert(attestation.to_string(), signature.into());
                     }
-                } else if path.starts_with(
-                    "https://x.com/i/api/graphql/Yka-W8dz7RaEuQNkroPkYw/UserByScreenName",
-                ) {
+                } else if path.contains("UserByScreenName") {
                     let parsed: crate::tls::x::UserByScreenName =
                         serde_json::from_str(&body).expect("failed to parse x.com response");
                     let statuses_count = parsed.data.user.result.legacy.statuses_count;
@@ -114,6 +112,14 @@ impl Verifier<Notarize> {
                         let signature = signer.sign(attestation.as_bytes());
                         attestations.insert(attestation.to_string(), signature.into());
                     }
+                } else if path.contains("dummyjson") || path.contains("swapi") {
+                    let attestation = "isHuman";
+                    let signature = signer.sign(attestation.as_bytes());
+                    attestations.insert(attestation.to_string(), signature.into());
+
+                    let attestation = "age>21";
+                    let signature = signer.sign(attestation.as_bytes());
+                    attestations.insert(attestation.to_string(), signature.into());
                 } else {
                     trace!("request path not found");
                 }

@@ -113,18 +113,40 @@ impl JsProver {
             notarized_session.application_data
         );
 
+        info!("attestations: {:?}", notarized_session.attestations);
+
         let mut attestations_vec = Vec::new();
         for (key, value) in notarized_session.attestations.iter() {
             info!("attestation: {} {:?}", key, value);
-            attestations_vec.push(format!("{}:{:?};", key, value));
+            attestations_vec.push(
+                json!({
+                    "attribute_name": key,
+                    "attribute_hex": hex::encode(key.as_bytes()),
+                    "signature": format!("{:?}", hex::encode(value.to_bytes())),
+                })
+                .to_string(),
+            );
         }
+        info!("attestations: {:?}", attestations_vec);
+        info!("attestations: {:?}", attestations_vec.join("|"));
 
-        Ok(format!(
-            "{:?}\r\n{}\r\n{}\r\n",
-            notarized_session.signature,
-            attestations_vec.join("\r\n"),
-            notarized_session.application_data
-        ))
+        use serde_json::json;
+
+        let serialized = json!({
+            "application_data": notarized_session.application_data,
+            "signature": format!("{:?}", hex::encode(notarized_session.signature.to_bytes())),
+            "attributes": attestations_vec,
+        })
+        .to_string();
+
+        Ok(serialized)
+
+        // Ok(format!(
+        //     "{:?}\r\n{}\r\n{}\r\n",
+        //     notarized_session.signature,
+        //     attestations_vec.join("\r\n"),
+        //     notarized_session.application_data
+        // ))
     }
 }
 
