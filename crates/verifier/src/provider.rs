@@ -591,4 +591,617 @@ mod tests {
         println!("result: {:?}", result);
         // assert_eq!(result.len(), 2);
     }
+
+    const UBEREATS_RESPONSE_TEXT: &str = r#"
+  {
+  "status": "success",
+  "data": {
+    "ordersMap": {
+      "6a58f37d-5258-4ac7-902c-2c9c26d72259": {
+        "baseEaterOrder": {
+          "uuid": "6a58f37d-5258-4ac7-902c-2c9c26d72259",
+          "storeUuid": "484a901a-3750-49a0-8207-b4db729ba2d2",
+          "isCancelled": false,
+          "isCompleted": true,
+          "completedAt": "2024-08-19T20:38:34.000Z",
+          "lastStateChangeAt": "2024-08-19T20:38:34.000Z",
+          "orderStateChanges": [
+            {
+              "stateChangeTime": "2024-08-19T19:31:56.000Z",
+              "type": "CREATED",
+              "changingEntityUuid": null
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:31:56.000Z",
+              "type": "OFFERED",
+              "changingEntityUuid": null
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:32:01.000Z",
+              "type": "ASSIGNED",
+              "changingEntityUuid": null
+            },
+            {
+              "stateChangeTime": "2024-08-19T20:38:34.000Z",
+              "type": "COMPLETED",
+              "changingEntityUuid": null
+            }
+          ],
+          "deliveryStateChanges": [
+            {
+              "stateChangeTime": "2024-08-19T19:41:49.000Z",
+              "type": "DISPATCHED"
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:43:03.000Z",
+              "type": "UNKNOWN"
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:44:33.000Z",
+              "type": "CANCELED"
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:44:50.000Z",
+              "type": "DISPATCHED"
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:45:03.000Z",
+              "type": "DISPATCHED"
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:45:19.000Z",
+              "type": "DISPATCHED"
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:46:03.000Z",
+              "type": "DISPATCHED"
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:46:35.000Z",
+              "type": "DISPATCHED"
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:47:03.000Z",
+              "type": "DISPATCHED"
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:47:19.000Z",
+              "type": "DISPATCHED"
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:48:03.000Z",
+              "type": "DISPATCHED"
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:48:19.000Z",
+              "type": "DISPATCHED"
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:48:48.000Z",
+              "type": "DISPATCHED"
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:51:34.000Z",
+              "type": "DISPATCHED"
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:52:19.000Z",
+              "type": "DISPATCHED"
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:52:34.000Z",
+              "type": "DISPATCHED"
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:53:33.000Z",
+              "type": "UNKNOWN"
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:55:39.000Z",
+              "type": "PICKUP_ARRIVED"
+            },
+            {
+              "stateChangeTime": "2024-08-19T19:59:31.000Z",
+              "type": "BEGINTRIP"
+            },
+            {
+              "stateChangeTime": "2024-08-19T20:37:11.000Z",
+              "type": "PICKUP_ARRIVED"
+            },
+            {
+              "stateChangeTime": "2024-08-19T20:38:34.000Z",
+              "type": "COMPLETED"
+            }
+          ],
+          "shoppingCart": {
+            "cartUuid": "8b3a9eb6-d13a-42b8-b862-2a96c19e8d99",
+            "items": [
+              {
+                "uuid": "c7ff3e87-932d-58cd-9f58-cd324172feb6",
+                "storeUuid": "484a901a-3750-49a0-8207-b4db729ba2d2",
+                "shoppingCartItemUuid": "7cec3d83-c757-410e-bb93-8a48fc6d5e58",
+                "sectionUuid": "35272fb5-ad16-5375-919c-c20ec5f6b62d",
+                "subsectionUuid": "b951886a-8e21-5c8a-a791-13790f4dffd3",
+                "title": "Thai Coconut Curry Soup",
+                "price": 875,
+                "quantity": 1,
+                "specialInstructions": "",
+                "customizations": [],
+                "cartItemCustomizations": {},
+                "consumerUuid": "baa82dfe-7833-4b34-b854-88684e38e81e",
+                "rating": null,
+                "itemQuantity": {
+                  "inSellableUnit": {
+                    "value": {
+                      "coefficient": 1,
+                      "exponent": 0
+                    },
+                    "measurementUnit": {
+                      "measurementType": "MEASUREMENT_TYPE_COUNT",
+                      "length": null,
+                      "weight": null,
+                      "volume": null
+                    },
+                    "measurementUnitAbbreviationText": null
+                  },
+                  "inPriceableUnit": null
+                }
+              },
+              {
+                "uuid": "5151f82e-8b5a-5932-b50c-9be8d212c5f4",
+                "storeUuid": "484a901a-3750-49a0-8207-b4db729ba2d2",
+                "shoppingCartItemUuid": "c1f8bac1-c5be-4694-b661-178e9eb90af3",
+                "sectionUuid": "35272fb5-ad16-5375-919c-c20ec5f6b62d",
+                "subsectionUuid": "b951886a-8e21-5c8a-a791-13790f4dffd3",
+                "title": "Taiwanese Fried Cashew Mozzarella Croquettes",
+                "price": 1125,
+                "quantity": 1,
+                "specialInstructions": "",
+                "customizations": [
+                  {
+                    "uuid": "c0d24887-fb53-5759-8725-9d3a8669ed97",
+                    "title": "Sauce (Mozzarella Balls)",
+                    "childOptions": {
+                      "options": [
+                        {
+                          "price": 0,
+                          "quantity": 1,
+                          "title": "Spicy Ketchup on the side",
+                          "uuid": "9e793c7e-abc1-5d64-a2bb-026fae6bddb2",
+                          "childCustomizationList": []
+                        }
+                      ]
+                    },
+                    "groupId": 0
+                  }
+                ],
+                "cartItemCustomizations": {
+                  "c0d24887-fb53-5759-8725-9d3a8669ed97+0": [
+                    {
+                      "uuid": "9e793c7e-abc1-5d64-a2bb-026fae6bddb2",
+                      "price": 0,
+                      "quantity": 1,
+                      "title": "Spicy Ketchup on the side",
+                      "defaultQuantity": 0,
+                      "customizationMeta": {
+                        "title": "Sauce (Mozzarella Balls)",
+                        "isPickOne": false
+                      }
+                    }
+                  ]
+                },
+                "consumerUuid": "baa82dfe-7833-4b34-b854-88684e38e81e",
+                "rating": null,
+                "itemQuantity": {
+                  "inSellableUnit": {
+                    "value": {
+                      "coefficient": 1,
+                      "exponent": 0
+                    },
+                    "measurementUnit": {
+                      "measurementType": "MEASUREMENT_TYPE_COUNT",
+                      "length": null,
+                      "weight": null,
+                      "volume": null
+                    },
+                    "measurementUnitAbbreviationText": null
+                  },
+                  "inPriceableUnit": null
+                }
+              },
+              {
+                "uuid": "48a6aa8d-a703-5357-b873-772351b5fde8",
+                "storeUuid": "484a901a-3750-49a0-8207-b4db729ba2d2",
+                "shoppingCartItemUuid": "6aae0ca3-a184-4e47-a05c-8b10ee2d3563",
+                "sectionUuid": "35272fb5-ad16-5375-919c-c20ec5f6b62d",
+                "subsectionUuid": "b951886a-8e21-5c8a-a791-13790f4dffd3",
+                "title": "Firecracker Cauliflower",
+                "price": 1125,
+                "quantity": 1,
+                "specialInstructions": "",
+                "customizations": [
+                  {
+                    "uuid": "ae63620e-de6d-51f6-bb25-a75e990d6ea2",
+                    "title": "Substitute Firecracker sauce",
+                    "childOptions": {
+                      "options": [
+                        {
+                          "price": 0,
+                          "quantity": 1,
+                          "title": "Sub for Teriyaki sauce",
+                          "uuid": "16b44899-398e-5768-babb-f3048bdc63a8",
+                          "childCustomizationList": []
+                        }
+                      ]
+                    },
+                    "groupId": 0
+                  }
+                ],
+                "cartItemCustomizations": {
+                  "ae63620e-de6d-51f6-bb25-a75e990d6ea2+0": [
+                    {
+                      "uuid": "16b44899-398e-5768-babb-f3048bdc63a8",
+                      "price": 0,
+                      "quantity": 1,
+                      "title": "Sub for Teriyaki sauce",
+                      "defaultQuantity": 0,
+                      "customizationMeta": {
+                        "title": "Substitute Firecracker sauce",
+                        "isPickOne": false
+                      }
+                    }
+                  ]
+                },
+                "consumerUuid": "baa82dfe-7833-4b34-b854-88684e38e81e",
+                "rating": null,
+                "itemQuantity": {
+                  "inSellableUnit": {
+                    "value": {
+                      "coefficient": 1,
+                      "exponent": 0
+                    },
+                    "measurementUnit": {
+                      "measurementType": "MEASUREMENT_TYPE_COUNT",
+                      "length": null,
+                      "weight": null,
+                      "volume": null
+                    },
+                    "measurementUnitAbbreviationText": null
+                  },
+                  "inPriceableUnit": null
+                }
+              }
+            ],
+            "currencyCode": "USD"
+          },
+          "currencyCode": "USD",
+          "isScheduledOrder": false,
+          "numItems": 3,
+          "totalQuantity": 3,
+          "fulfillmentType": "DELIVERY",
+          "userGroupedItems": [
+            {
+              "items": [
+                {
+                  "uuid": "c7ff3e87-932d-58cd-9f58-cd324172feb6",
+                  "storeUuid": "484a901a-3750-49a0-8207-b4db729ba2d2",
+                  "shoppingCartItemUuid": "7cec3d83-c757-410e-bb93-8a48fc6d5e58",
+                  "sectionUuid": "35272fb5-ad16-5375-919c-c20ec5f6b62d",
+                  "subsectionUuid": "b951886a-8e21-5c8a-a791-13790f4dffd3",
+                  "title": "Thai Coconut Curry Soup",
+                  "price": 875,
+                  "quantity": 1,
+                  "specialInstructions": "",
+                  "customizations": [],
+                  "cartItemCustomizations": {},
+                  "consumerUuid": "baa82dfe-7833-4b34-b854-88684e38e81e",
+                  "rating": null,
+                  "itemQuantity": {
+                    "inSellableUnit": {
+                      "value": {
+                        "coefficient": 1,
+                        "exponent": 0
+                      },
+                      "measurementUnit": {
+                        "measurementType": "MEASUREMENT_TYPE_COUNT",
+                        "length": null,
+                        "weight": null,
+                        "volume": null
+                      },
+                      "measurementUnitAbbreviationText": null
+                    },
+                    "inPriceableUnit": null
+                  }
+                },
+                {
+                  "uuid": "5151f82e-8b5a-5932-b50c-9be8d212c5f4",
+                  "storeUuid": "484a901a-3750-49a0-8207-b4db729ba2d2",
+                  "shoppingCartItemUuid": "c1f8bac1-c5be-4694-b661-178e9eb90af3",
+                  "sectionUuid": "35272fb5-ad16-5375-919c-c20ec5f6b62d",
+                  "subsectionUuid": "b951886a-8e21-5c8a-a791-13790f4dffd3",
+                  "title": "Taiwanese Fried Cashew Mozzarella Croquettes",
+                  "price": 1125,
+                  "quantity": 1,
+                  "specialInstructions": "",
+                  "customizations": [
+                    {
+                      "uuid": "c0d24887-fb53-5759-8725-9d3a8669ed97",
+                      "title": "Sauce (Mozzarella Balls)",
+                      "childOptions": {
+                        "options": [
+                          {
+                            "price": 0,
+                            "quantity": 1,
+                            "title": "Spicy Ketchup on the side",
+                            "uuid": "9e793c7e-abc1-5d64-a2bb-026fae6bddb2",
+                            "childCustomizationList": []
+                          }
+                        ]
+                      },
+                      "groupId": 0
+                    }
+                  ],
+                  "cartItemCustomizations": {
+                    "c0d24887-fb53-5759-8725-9d3a8669ed97+0": [
+                      {
+                        "uuid": "9e793c7e-abc1-5d64-a2bb-026fae6bddb2",
+                        "price": 0,
+                        "quantity": 1,
+                        "title": "Spicy Ketchup on the side",
+                        "defaultQuantity": 0,
+                        "customizationMeta": {
+                          "title": "Sauce (Mozzarella Balls)",
+                          "isPickOne": false
+                        }
+                      }
+                    ]
+                  },
+                  "consumerUuid": "baa82dfe-7833-4b34-b854-88684e38e81e",
+                  "rating": null,
+                  "itemQuantity": {
+                    "inSellableUnit": {
+                      "value": {
+                        "coefficient": 1,
+                        "exponent": 0
+                      },
+                      "measurementUnit": {
+                        "measurementType": "MEASUREMENT_TYPE_COUNT",
+                        "length": null,
+                        "weight": null,
+                        "volume": null
+                      },
+                      "measurementUnitAbbreviationText": null
+                    },
+                    "inPriceableUnit": null
+                  }
+                },
+                {
+                  "uuid": "48a6aa8d-a703-5357-b873-772351b5fde8",
+                  "storeUuid": "484a901a-3750-49a0-8207-b4db729ba2d2",
+                  "shoppingCartItemUuid": "6aae0ca3-a184-4e47-a05c-8b10ee2d3563",
+                  "sectionUuid": "35272fb5-ad16-5375-919c-c20ec5f6b62d",
+                  "subsectionUuid": "b951886a-8e21-5c8a-a791-13790f4dffd3",
+                  "title": "Firecracker Cauliflower",
+                  "price": 1125,
+                  "quantity": 1,
+                  "specialInstructions": "",
+                  "customizations": [
+                    {
+                      "uuid": "ae63620e-de6d-51f6-bb25-a75e990d6ea2",
+                      "title": "Substitute Firecracker sauce",
+                      "childOptions": {
+                        "options": [
+                          {
+                            "price": 0,
+                            "quantity": 1,
+                            "title": "Sub for Teriyaki sauce",
+                            "uuid": "16b44899-398e-5768-babb-f3048bdc63a8",
+                            "childCustomizationList": []
+                          }
+                        ]
+                      },
+                      "groupId": 0
+                    }
+                  ],
+                  "cartItemCustomizations": {
+                    "ae63620e-de6d-51f6-bb25-a75e990d6ea2+0": [
+                      {
+                        "uuid": "16b44899-398e-5768-babb-f3048bdc63a8",
+                        "price": 0,
+                        "quantity": 1,
+                        "title": "Sub for Teriyaki sauce",
+                        "defaultQuantity": 0,
+                        "customizationMeta": {
+                          "title": "Substitute Firecracker sauce",
+                          "isPickOne": false
+                        }
+                      }
+                    ]
+                  },
+                  "consumerUuid": "baa82dfe-7833-4b34-b854-88684e38e81e",
+                  "rating": null,
+                  "itemQuantity": {
+                    "inSellableUnit": {
+                      "value": {
+                        "coefficient": 1,
+                        "exponent": 0
+                      },
+                      "measurementUnit": {
+                        "measurementType": "MEASUREMENT_TYPE_COUNT",
+                        "length": null,
+                        "weight": null,
+                        "volume": null
+                      },
+                      "measurementUnitAbbreviationText": null
+                    },
+                    "inPriceableUnit": null
+                  }
+                }
+              ],
+              "quantity": 3
+            }
+          ],
+          "posType": "UNDEFINED",
+          "orderAppVariant": "UBEREATS",
+          "isBackfilledOrder": false,
+          "displayName": "",
+          "billSplitOption": "UNKNOWN_BILL_SPLIT_OPTION",
+          "isOrderCreator": true,
+          "creatorDisplayName": "Slimane"
+        },
+        "storeInfo": {
+          "uuid": "484a901a-3750-49a0-8207-b4db729ba2d2",
+          "heroImageUrl": "https://duyt4h9nfnj50.cloudfront.net/sku/c5929f791f8cad88221c2f3e2f6958ea",
+          "title": "Pow Pow",
+          "isOpen": false,
+          "closedMessage": "Closed",
+          "location": {
+            "address": {
+              "address1": "1253 H St NE, Washington, DC 20002, USA",
+              "aptOrSuite": "",
+              "city": "Washington",
+              "country": "US",
+              "postalCode": "20002",
+              "region": "DC",
+              "title": null,
+              "uuid": "f7421339-086d-4a06-b2f7-b9270dbfa137",
+              "eaterFormattedAddress": "1253 H St NE, Washington, DC 20002, USA, Washington, DC 20002",
+              "subtitle": null,
+              "businessName": null,
+              "street": null,
+              "ugcAddressFieldInfo": null
+            },
+            "latitude": 38.9001426,
+            "longitude": -76.988559,
+            "reference": null,
+            "type": null,
+            "placeReferences": null,
+            "interactionType": null,
+            "nickname": null
+          },
+          "storeStatus": {
+            "isActive": true,
+            "notActiveReason": "UNKNOWN"
+          },
+          "contact": {
+            "phoneNumber": "+12023991364"
+          },
+          "territoryUUID": "d5f8a8fc-e1bb-4309-acb8-aac5b7c97260",
+          "rating": null,
+          "slug": "pow-pow-1253-h-st-ne"
+        },
+        "courierInfo": {
+          "name": ""
+        },
+        "fareInfo": {
+          "totalPrice": 3002.9999999999995,
+          "checkoutInfo": [
+            {
+              "label": "delivery.uber.service_fee",
+              "type": "credit",
+              "rawValue": 0.1,
+              "key": "delivery.uber.service_fee"
+            },
+            {
+              "label": "delivery.uber.service_fee.tax",
+              "type": "credit",
+              "rawValue": 0.01,
+              "key": "delivery.uber.service_fee.tax"
+            },
+            {
+              "label": "Tax on Delivery Fees",
+              "type": "credit",
+              "rawValue": 0.48,
+              "key": "eats.mp.charges.bundled_delivery_fee_taxes"
+            },
+            {
+              "label": "Special Offer",
+              "type": "debit",
+              "rawValue": -10.94,
+              "key": "eats.discounts.store_promotion"
+            },
+            {
+              "label": "Subtotal",
+              "type": "credit",
+              "rawValue": 31.25,
+              "key": "eats_fare.subtotal"
+            },
+            {
+              "label": "Tax",
+              "type": "credit",
+              "rawValue": 2.03,
+              "key": "eats.tax.base"
+            },
+            {
+              "label": "Service Fee and Other Fees",
+              "type": "credit",
+              "rawValue": 4.79,
+              "key": "eats.mp.charges.basket_dependent_fee"
+            },
+            {
+              "label": "Tip",
+              "type": "credit",
+              "rawValue": 2.31,
+              "key": "eats_fare.tip"
+            },
+            {
+              "label": "Total",
+              "type": "credit",
+              "rawValue": 30.029999999999998,
+              "key": "eats_fare.total"
+            }
+          ]
+        },
+        "ratingInfo": {
+          "isRatable": true,
+          "userRatings": []
+        },
+        "interactionType": "leave_in_lobby"
+      }
+    },
+    "orderUuids": [
+      "6a58f37d-5258-4ac7-902c-2c9c26d72259"
+    ],
+    "paginationData": {
+      "nextCursor": "{\"entity_type\":\"CONSUMER\",\"cursor\":\"MjAyMy0wMy0xMlQyMzowNjowOS43MDRa\"}"
+    },
+    "meta": {
+      "hasMore": true
+    }
+  }
+}
+  "#;
+
+    const UBEREATS_PROVIDER_TEXT: &str = r#"
+       {
+      "id": 5,
+      "host": "ubereats.com",
+      "urlRegex":
+        "^https:\\/\\/www\\.ubereats\\.com\\/_p\\/api\\/getPastOrdersV1.*",
+      "targetUrl": "https://www.ubereats.com/orders",
+      "method": "POST",
+      "transport": "xmlhttprequest",
+      "title": "Uber eats orders",
+      "description": "Go to your order history",
+      "icon": "https://i.pinimg.com/originals/a3/4a/8c/a34a8c234e27ac9476e7f010f750d136.jpg",
+      "responseType": "json",
+      "attributes": ["{totalOrders: totalOrders}"],
+      "preprocess": "function calculateTotalPrice(jsonString) { const data = JSON.parse(jsonString); const orders = data.data.ordersMap; return { totalOrders: Object.values(orders).reduce((total, order) => { const price = order.fareInfo.totalPrice; return total + (typeof price === 'number' ? price : 0); }, 0), }; }"
+    }
+    "#;
+
+    #[cfg(feature = "provider")]
+    #[tokio::test]
+    async fn test_ubereats_provider() {
+        let provider: Provider =
+            serde_json::from_str(UBEREATS_PROVIDER_TEXT).expect("Failed to parse provider");
+        let result = provider
+            .preprocess_response(&UBEREATS_RESPONSE_TEXT)
+            .expect("Failed to preprocess response");
+        let result = provider
+            .get_attributes(&result)
+            .expect("Failed to get attributes");
+        println!("result: {:?}", result);
+        // assert_eq!(result.len(), 2);
+    }
 }
