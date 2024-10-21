@@ -1,7 +1,7 @@
 //! Provider configuration for the verifier
 
 use boa_engine::{js_str, property::Attribute, Context, JsValue, Source};
-#[cfg(feature = "provider")]
+#[cfg(not(target_arch = "wasm32"))]
 use jmespath;
 use regex::Regex;
 use reqwest;
@@ -17,7 +17,7 @@ pub enum ProviderError {
     /// InvalidRegex is the error that is returned when the regex is invalid
     #[error("Invalid regex '{0}': {1}")]
     InvalidRegex(String, regex::Error),
-    #[cfg(feature = "provider")]
+    #[cfg(not(target_arch = "wasm32"))]
     /// InvalidJmespath is the error that is returned when the JMESPath expression is invalid
     #[error("Invalid JMESPath expression '{0}': {1}")]
     InvalidJmespath(String, jmespath::JmespathError),
@@ -53,7 +53,7 @@ pub enum ProviderError {
     CacheError(String),
 }
 
-#[cfg(feature = "provider")]
+#[cfg(not(target_arch = "wasm32"))]
 thread_local! {
     static COMPILED_ATTRIBUTES_CACHE: RefCell<HashMap<u32, Vec<jmespath::Expression<'static>>>> = RefCell::new(HashMap::new());
     static COMPILED_REGEX_CACHE: RefCell<HashMap<u32, Regex>> = RefCell::new(HashMap::new());
@@ -71,7 +71,7 @@ pub struct Processor {
     pub config: Config,
 }
 
-#[cfg(feature = "provider")]
+#[cfg(not(target_arch = "wasm32"))]
 impl Processor {
     /// Create a new processor
     pub async fn new(url: String, schema_url: String) -> Result<Self, ProviderError> {
@@ -187,7 +187,7 @@ pub struct Provider {
     pub preprocess: Option<String>,
 }
 
-#[cfg(feature = "provider")]
+#[cfg(not(target_arch = "wasm32"))]
 impl Provider {
     /// Get the compiled attributes from the JMESPath expressions
     fn get_compiled_attributes<F>(&self, f: F) -> Result<Vec<String>, ProviderError>
@@ -339,7 +339,7 @@ pub struct Config {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(feature = "provider")]
+    #[cfg(not(target_arch = "wasm32"))]
     use tokio;
 
     const MISSING_ATTRIBUTES_PROVIDER_TEXT: &str = r#"{
@@ -525,7 +525,7 @@ mod tests {
         assert!(result.contains(&"isValid: true".to_string()));
     }
 
-    #[cfg(feature = "provider")]
+    #[cfg(not(target_arch = "wasm32"))]
     #[tokio::test]
     async fn test_processor() {
         let processor = Processor::new("https://eternis-extension-providers.s3.us-east-1.amazonaws.com/test/provider-example.json".to_string(), "https://eternis-extension-providers.s3.us-east-1.amazonaws.com/test/provider-schema.json".to_string()).await.expect("Failed to initialize processor");
@@ -577,8 +577,7 @@ mod tests {
       "preprocess": "function process(jsonString) { const s =JSON.parse(jsonString); return {score: s.creditScoreOutlineResponse.creditScore.currentCreditScoreSummary.creditRiskScore, high_score: s.creditScoreOutlineResponse.creditScore.currentCreditScoreSummary.creditRiskScore > 700, grade_name: s.creditScoreOutlineResponse.creditScore.currentCreditScoreSummary.creditScoreGradeName} }"
     }"#;
 
-    #[cfg(feature = "provider")]
-    #[tokio::test]
+    #[test]
     async fn test_chase_provider() {
         let provider: Provider =
             serde_json::from_str(CHASE_PROVIDER_TEXT).expect("Failed to parse provider");
@@ -1185,12 +1184,11 @@ mod tests {
       "description": "Go to your order history",
       "icon": "https://i.pinimg.com/originals/a3/4a/8c/a34a8c234e27ac9476e7f010f750d136.jpg",
       "responseType": "json",
-      "attributes": ["{totalOrders: totalOrders}"],
-      "preprocess": "function process(jsonString) { const data = JSON.parse(jsonString); const orders = data.data.ordersMap; return { totalOrders: Object.values(orders).reduce((total, order) => { const price = order.fareInfo.totalPrice; return total + (typeof price === 'number' ? price : 0); }, 0), }; }"
-    }
-    "#;
+      "attributes": ["{totalsByCurrency: totalsByCurrency, orderCount: orderCount}"],
+      "preprocess": "function process(jsonString) { const data = JSON.parse(jsonString); const orders = data.data.ordersMap; const currencyTotals = Object.values(orders).reduce((totals, order) => { const price = order.fareInfo.totalPrice; const currency = order.currencyCode; if (typeof price === 'number' && currency) { if (!totals[currency]) { totals[currency] = 0; } totals[currency] += price; } return totals; }, {}); const totalsByCurrency = Object.entries(currencyTotals).map(([currency, total]) => `${currency}:${total}`).join(','); }"
+    }"#;
 
-    #[cfg(feature = "provider")]
+    #[cfg(not(target_arch = "wasm32"))]
     #[tokio::test]
     async fn test_ubereats_provider() {
         let provider: Provider =

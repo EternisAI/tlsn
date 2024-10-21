@@ -71,7 +71,7 @@ impl Verifier<Notarize> {
         let body = String::from_utf8_lossy(&resp_bytes[resp_size..]).to_string();
         let mut attestations: HashMap<String, Signature> = HashMap::new();
 
-        #[cfg(feature = "provider")]
+        #[cfg(not(target_arch = "wasm32"))]
         match request.path {
             Some(path) => {
                 trace!("request path: {:?}", path);
