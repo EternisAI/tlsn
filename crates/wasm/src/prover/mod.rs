@@ -141,13 +141,6 @@ impl JsProver {
         .to_string();
 
         Ok(serialized)
-
-        // Ok(format!(
-        //     "{:?}\r\n{}\r\n{}\r\n",
-        //     notarized_session.signature,
-        //     attestations_vec.join("\r\n"),
-        //     notarized_session.application_data
-        // ))
     }
 }
 
