@@ -1186,7 +1186,7 @@ mod tests {
       "icon": "https://i.pinimg.com/originals/a3/4a/8c/a34a8c234e27ac9476e7f010f750d136.jpg",
       "responseType": "json",
       "attributes": ["{totalOrders: totalOrders}"],
-      "preprocess": "function calculateTotalPrice(jsonString) { const data = JSON.parse(jsonString); const orders = data.data.ordersMap; return { totalOrders: Object.values(orders).reduce((total, order) => { const price = order.fareInfo.totalPrice; return total + (typeof price === 'number' ? price : 0); }, 0), }; }"
+      "preprocess": "function process(jsonString) { const data = JSON.parse(jsonString); const orders = data.data.ordersMap; return { totalOrders: Object.values(orders).reduce((total, order) => { const price = order.fareInfo.totalPrice; return total + (typeof price === 'number' ? price : 0); }, 0), }; }"
     }
     "#;
 
