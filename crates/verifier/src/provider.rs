@@ -578,7 +578,7 @@ mod tests {
     }"#;
 
     #[test]
-    async fn test_chase_provider() {
+    fn test_chase_provider() {
         let provider: Provider =
             serde_json::from_str(CHASE_PROVIDER_TEXT).expect("Failed to parse provider");
         let result = provider
@@ -1184,13 +1184,13 @@ mod tests {
       "description": "Go to your order history",
       "icon": "https://i.pinimg.com/originals/a3/4a/8c/a34a8c234e27ac9476e7f010f750d136.jpg",
       "responseType": "json",
-      "attributes": ["{totalsByCurrency: totalsByCurrency, orderCount: orderCount}"],
-      "preprocess": "function process(jsonString) { const data = JSON.parse(jsonString); const orders = data.data.ordersMap; const currencyTotals = Object.values(orders).reduce((totals, order) => { const price = order.fareInfo.totalPrice; const currency = order.currencyCode; if (typeof price === 'number' && currency) { if (!totals[currency]) { totals[currency] = 0; } totals[currency] += price; } return totals; }, {}); const totalsByCurrency = Object.entries(currencyTotals).map(([currency, total]) => `${currency}:${total}`).join(','); }"
+      "attributes": ["{usd_total: USD.totalPrice, usd_count: USD.orderCount, eur_total: EUR.totalPrice, eur_count: EUR.orderCount}"],
+      "preprocess": "function process(jsonString) { const totals = Object.values(JSON.parse(jsonString).data.ordersMap).reduce((totals, order) => { const price = order.fareInfo.totalPrice; const currency = order.baseEaterOrder.currencyCode; if (typeof price === 'number' && currency) { if (!totals[currency]) { totals[currency] = { totalPrice: 0, orderCount: 0 }; } totals[currency].totalPrice += price; totals[currency].orderCount += 1; } return totals; }, {}); Object.keys(totals).forEach(currency => totals[currency].totalPrice = (totals[currency].totalPrice / 100).toFixed(2)); return totals; } "
     }"#;
 
     #[cfg(not(target_arch = "wasm32"))]
-    #[tokio::test]
-    async fn test_ubereats_provider() {
+    #[test]
+    fn test_ubereats_provider() {
         let provider: Provider =
             serde_json::from_str(UBEREATS_PROVIDER_TEXT).expect("Failed to parse provider");
         let result = provider
@@ -1199,7 +1199,6 @@ mod tests {
         let result = provider
             .get_attributes(&result)
             .expect("Failed to get attributes");
-        println!("result: {:?}", result);
-        // assert_eq!(result.len(), 2);
+        assert_eq!(result.len(), 4);
     }
 }
