@@ -17,7 +17,7 @@ pub enum ProviderError {
     /// InvalidRegex is the error that is returned when the regex is invalid
     #[error("Invalid regex '{0}': {1}")]
     InvalidRegex(String, regex::Error),
-#[cfg(feature = "provider")]
+    #[cfg(feature = "provider")]
     /// InvalidJmespath is the error that is returned when the JMESPath expression is invalid
     #[error("Invalid JMESPath expression '{0}': {1}")]
     InvalidJmespath(String, jmespath::JmespathError),
@@ -539,5 +539,56 @@ mod tests {
         assert_eq!(result.len(), 2);
         assert!(result.contains(&"age: 25.0".to_string()));
         assert!(result.contains(&"isValid: true".to_string()));
+    }
+
+    const CHASE_RESPONSE_TEXT: &str = r#"{
+        "creditScoreOutlineResponse": {
+            "creditBureauName": "EXPERIAN",
+            "creditScore": {
+                "currentCreditScoreSummary": {
+                    "creditRiskScore": 701,
+                    "creditScoreGradeName": "GOOD"
+                    },
+                "previousCreditScoreSummary": {
+                    "creditRiskScore": 123,
+                    "creditScoreGradeName": "GOOD"
+                },
+                "creditScoreModelIdentifier": {
+                    "riskModelName": "VantageScore",
+                    "riskModelVersionNumber": "1.2"
+                }
+            }
+        }
+    }"#;
+
+    const CHASE_PROVIDER_TEXT: &str = r#"{
+      "id": 6,
+      "host": "secure.chase.com",
+      "urlRegex":
+        "^https:\/\/secure.chase.com\/svc\/wr\/profile\/secure\/creditscore\/v2\/credit-journey\/servicing\/inquiry-maintenance\/v1\/customers\/credit-journey-insight-outlines.*",
+      "targetUrl": "https://secure.chase.com/web/auth/dashboard#/dashboard/overview",
+      "method": "GET",
+      "transport": "",
+      "title": "Chase credit score",
+      "description": "Login to your chase account",
+      "icon": "https://download.logo.wine/logo/Chase_Bank/Chase_Bank-Logo.wine.png",
+      "responseType": "json",
+      "attributes": ["{creditScore: score, high_score: high_score, grade_name: grade_name}"],
+      "preprocess": "function process(jsonString) { const s =JSON.parse(jsonString); return {score: s.creditScoreOutlineResponse.creditScore.currentCreditScoreSummary.creditRiskScore, high_score: s.creditScoreOutlineResponse.creditScore.currentCreditScoreSummary.creditRiskScore > 700, grade_name: s.creditScoreOutlineResponse.creditScore.currentCreditScoreSummary.creditScoreGradeName} }"
+    }"#;
+
+    #[cfg(feature = "provider")]
+    #[tokio::test]
+    async fn test_chase_provider() {
+        let provider: Provider =
+            serde_json::from_str(CHASE_PROVIDER_TEXT).expect("Failed to parse provider");
+        let result = provider
+            .preprocess_response(&CHASE_RESPONSE_TEXT)
+            .expect("Failed to preprocess response");
+        let result = provider
+            .get_attributes(&result)
+            .expect("Failed to get attributes");
+        println!("result: {:?}", result);
+        // assert_eq!(result.len(), 2);
     }
 }
