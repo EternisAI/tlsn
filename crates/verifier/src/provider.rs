@@ -149,7 +149,7 @@ impl Processor {
                 }
                 Err(e) => {
                     tracing::error!("Failed to check url method: {}", e);
-                    return Err(ProviderError::ProcessError(e.to_string()));
+                    tracing::debug!("Skipping provider: {}", provider.id);
                 }
             }
         }
