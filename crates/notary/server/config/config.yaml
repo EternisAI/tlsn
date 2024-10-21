@@ -29,3 +29,7 @@ logging:
 authorization:
   enabled: false
   whitelist-csv-path: "./fixture/auth/whitelist.csv"
+
+provider:
+  url: "https://eternis-extension-providers.s3.us-east-1.amazonaws.com/test/provider-example.json"
+  schema-url: "https://eternis-extension-providers.s3.us-east-1.amazonaws.com/test/provider-schema.json"
