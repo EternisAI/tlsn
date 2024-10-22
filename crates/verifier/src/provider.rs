@@ -276,6 +276,7 @@ impl Provider {
 
     /// Preprocess the response using the preprocess JMESPath expression
     pub fn preprocess_response(&self, response: &str) -> Result<Value, ProviderError> {
+        println!("preprocess: {:?}", self.preprocess);
         if let Some(preprocess) = &self.preprocess {
             if preprocess.is_empty() {
               let json = match serde_json::from_str(response) {
@@ -1233,6 +1234,191 @@ mod tests {
         let result = provider
             .get_attributes(&result)
             .expect("Failed to get attributes");
+        println!("{:?}", result);
         assert_eq!(result.len(), 4);
+    }
+
+    const REDDIT_PROVIDER_TEXT: &str = r#"{
+      "id": 3,
+      "host": "reddit.com",
+      "urlRegex": "^https:\\/\\/www\\.reddit\\.com\\/user\\/[a-zA-Z0-9]+.*\\/about\\.json$",
+      "targetUrl": "https://www.reddit.com",
+      "method": "GET",
+      "transport": "",
+      "title": "Reddit account",
+      "description": "Go to your profile",
+      "icon": "https://seeklogo.com/images/R/reddit-icon-new-2023-logo-3F12137D65-seeklogo.com.png",
+      "responseType": "html",
+      "actionSelectors": ["a[href^=\"/user/\"][href$=\"/\"]"],
+      "attributes": ["{karma: karma}"],
+      "preprocess": "function process(jsonString) { const data = JSON.parse(jsonString); return { karma: data.data.total_karma } }"
+    }"#;
+
+    const REDDIT_RESPONSE_TEXT: &str = r#"{
+  "kind": "t2",
+  "data": {
+    "is_employee": false,
+    "has_visited_new_profile": false,
+    "is_friend": false,
+    "pref_no_profanity": true,
+    "has_external_account": false,
+    "pref_geopopular": "",
+    "pref_show_trending": true,
+    "subreddit": {
+      "default_set": true,
+      "user_is_contributor": false,
+      "banner_img": "",
+      "allowed_media_in_comments": [],
+      "user_is_banned": false,
+      "free_form_reports": true,
+      "community_icon": null,
+      "show_media": true,
+      "icon_color": "",
+      "user_is_muted": null,
+      "display_name": "u_saberistic",
+      "header_img": null,
+      "title": "",
+      "coins": 0,
+      "previous_names": [],
+      "over_18": false,
+      "icon_size": [
+        256,
+        256
+      ],
+      "primary_color": "",
+      "icon_img": "https://styles.redditmedia.com/t5_3w62uh/styles/profileIcon_ldu1icwig3c81.png?width=256&amp;height=256&amp;crop=256:256,smart&amp;s=15bd7ab8be642a980566f9075fc5815f508935e7",
+      "description": "",
+      "submit_link_label": "",
+      "header_size": null,
+      "restrict_posting": true,
+      "restrict_commenting": false,
+      "subscribers": 1,
+      "submit_text_label": "",
+      "is_default_icon": false,
+      "link_flair_position": "",
+      "display_name_prefixed": "u/saberistic",
+      "key_color": "",
+      "name": "t5_3w62uh",
+      "is_default_banner": true,
+      "url": "/user/saberistic/",
+      "quarantine": false,
+      "banner_size": null,
+      "user_is_moderator": true,
+      "accept_followers": true,
+      "public_description": "Ads and Premium services engineer @brave\n\nComputer languages enthusiast\nSwore oath to protect privacy",
+      "link_flair_enabled": false,
+      "disable_contributor_requests": false,
+      "subreddit_type": "user",
+      "user_is_subscriber": false
+    },
+    "pref_show_presence": true,
+    "snoovatar_img": "",
+    "snoovatar_size": null,
+    "gold_expiration": null,
+    "has_gold_subscription": false,
+    "is_sponsor": false,
+    "num_friends": 0,
+    "features": {
+      "modmail_harassment_filter": true,
+      "mod_service_mute_writes": true,
+      "promoted_trend_blanks": true,
+      "show_amp_link": true,
+      "chat": true,
+      "is_email_permission_required": false,
+      "mod_awards": true,
+      "mweb_xpromo_revamp_v3": {
+        "owner": "growth",
+        "variant": "control_1",
+        "experiment_id": 480
+      },
+      "mweb_xpromo_revamp_v2": {
+        "owner": "growth",
+        "variant": "treatment_4",
+        "experiment_id": 457
+      },
+      "awards_on_streams": true,
+      "mweb_xpromo_modal_listing_click_daily_dismissible_ios": true,
+      "chat_subreddit": true,
+      "cookie_consent_banner": true,
+      "modlog_copyright_removal": true,
+      "do_not_track": true,
+      "images_in_comments": true,
+      "mod_service_mute_reads": true,
+      "chat_user_settings": true,
+      "use_pref_account_deployment": true,
+      "mweb_xpromo_interstitial_comments_ios": true,
+      "mweb_xpromo_modal_listing_click_daily_dismissible_android": true,
+      "premium_subscriptions_table": true,
+      "mweb_xpromo_interstitial_comments_android": true,
+      "crowd_control_for_post": true,
+      "mweb_sharing_web_share_api": {
+        "owner": "growth",
+        "variant": "control_1",
+        "experiment_id": 314
+      },
+      "chat_group_rollout": true,
+      "resized_styles_images": true,
+      "noreferrer_to_noopener": true,
+      "expensive_coins_package": true
+    },
+    "can_edit_name": false,
+    "is_blocked": false,
+    "verified": true,
+    "new_modmail_exists": null,
+    "pref_autoplay": true,
+    "coins": 0,
+    "has_paypal_subscription": false,
+    "has_subscribed_to_premium": false,
+    "id": "a2gghybr",
+    "can_create_subreddit": true,
+    "over_18": true,
+    "is_gold": false,
+    "is_mod": false,
+    "awarder_karma": 0,
+    "suspension_expiration_utc": null,
+    "has_stripe_subscription": false,
+    "is_suspended": false,
+    "pref_video_autoplay": true,
+    "in_chat": true,
+    "has_android_subscription": false,
+    "in_redesign_beta": true,
+    "icon_img": "https://styles.redditmedia.com/t5_3w62uh/styles/profileIcon_ldu1icwig3c81.png?width=256&amp;height=256&amp;crop=256:256,smart&amp;s=15bd7ab8be642a980566f9075fc5815f508935e7",
+    "has_mod_mail": false,
+    "pref_nightmode": false,
+    "awardee_karma": 0,
+    "hide_from_robots": false,
+    "password_set": true,
+    "modhash": "hf34fcz1wh637b593a4a2303d3f9193e2b9446faf6c90dee7a",
+    "link_karma": 1,
+    "force_password_reset": false,
+    "total_karma": 1,
+    "inbox_count": 2,
+    "pref_top_karma_subreddits": true,
+    "has_mail": true,
+    "pref_show_snoovatar": false,
+    "name": "saberistic",
+    "pref_clickgadget": 5,
+    "created": 1612356751,
+    "has_verified_email": true,
+    "gold_creddits": 0,
+    "created_utc": 1612356751,
+    "has_ios_subscription": false,
+    "pref_show_twitter": false,
+    "in_beta": false,
+    "comment_karma": 0,
+    "accept_followers": true,
+    "has_subscribed": true
+  }
+}"#;
+
+    #[test]
+    fn test_reddit_provider() {
+        let matchurl = "https://www.reddit.com/user/saberistic/about.json";
+        let provider: Provider = serde_json::from_str(REDDIT_PROVIDER_TEXT).expect("Failed to parse provider");
+        provider.check_url_method(matchurl, "POST").expect("Failed to check url method");
+        let result = provider.preprocess_response(&REDDIT_RESPONSE_TEXT).expect("Failed to preprocess response");
+        let attributes = provider.get_attributes(&result).expect("Failed to get attributes");
+        assert_eq!(attributes.len(), 1);
+        assert_eq!(attributes[0], "karma: 1");
     }
 }
