@@ -293,7 +293,11 @@ impl Provider {
                 Ok(json)
             });
         }
-        Ok(serde_json::from_str(response).map_err(|e| ProviderError::JsonParseError(e))?)
+        let json = match serde_json::from_str(response) {
+            Ok(json) => json,
+            Err(_) => serde_json::Value::String("{}".to_string()),
+        };
+        Ok(json)
     }
 
     /// Get the attributes from the response using the JMESPath expressions
@@ -364,16 +368,40 @@ mod tests {
             "public_repos": 47,
             "public_gists": 0
     }"#;
-        let parsed_response: serde_json::Value =
-            serde_json::from_str(response_text).expect("Failed to parse response text");
         let processed_response = provider
-            .preprocess_response(&parsed_response.to_string())
+            .preprocess_response(&response_text)
             .expect("Failed to preprocess response");
         let result = provider
             .get_attributes(&processed_response)
             .expect("Failed to get attributes");
         assert_eq!(result.len(), 0);
     }
+
+    const HTML_MISSING_ATTRIBUTES_PROVIDER_TEXT: &str = r#"{
+      "id": 7,
+      "host": "github.com",
+      "urlRegex": "^https:\\/\\/api\\.github\\.com\\/users\\/[a-zA-Z0-9]+(\\?.*)?$",
+      "targetUrl": "https://github.com",
+      "method": "GET",
+      "title": "Github profile",
+      "description": "Go to your profile",
+      "icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",  
+      "responseType": "json"
+  }"#;
+
+  #[test]
+  fn test_html_missing_attributes_provider() {
+      let provider: Provider = serde_json::from_str(HTML_MISSING_ATTRIBUTES_PROVIDER_TEXT)
+          .expect("Failed to parse provider");
+      let response_text = r#"<html><body><h1 id="followers">94</h1><h1 id="following">80</h1><h1 id="public_repos">47</h1></body></html>"#;
+      let processed_response = provider
+          .preprocess_response(response_text)
+          .expect("Failed to preprocess response");
+      let result = provider
+          .get_attributes(&processed_response)
+          .expect("Failed to get attributes");
+      assert_eq!(result.len(), 0);
+  }
 
     const JSON_PROVIDER_TEXT: &str = r#"{
       "id": 7,
@@ -416,10 +444,8 @@ mod tests {
             "created_at": "2013-06-17T06:21:04Z",
             "updated_at": "2024-08-30T16:35:36Z"
         }"#;
-        let parsed_response: serde_json::Value =
-            serde_json::from_str(response_text).expect("Failed to parse response text");
         let processed_response = provider
-            .preprocess_response(&parsed_response.to_string())
+            .preprocess_response(&response_text)
             .expect("Failed to preprocess response");
         let result = provider
             .get_attributes(&processed_response)
