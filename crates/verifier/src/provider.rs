@@ -276,7 +276,14 @@ impl Provider {
 
     /// Preprocess the response using the preprocess JMESPath expression
     pub fn preprocess_response(&self, response: &str) -> Result<Value, ProviderError> {
-        if let Some(_preprocess) = &self.preprocess {
+        if let Some(preprocess) = &self.preprocess {
+            if preprocess.is_empty() {
+              let json = match serde_json::from_str(response) {
+                Ok(json) => json,
+                    Err(_) => serde_json::Value::String("{}".to_string()),
+                };
+                return Ok(json);
+            }
             return self.get_compiled_preprocess(|context| {
                 let js_string = JsValue::String(response.to_string().into());
                 context
@@ -386,7 +393,8 @@ mod tests {
       "title": "Github profile",
       "description": "Go to your profile",
       "icon": "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png",  
-      "responseType": "json"
+      "responseType": "json",
+      "preprocess" : ""
   }"#;
 
   #[test]
