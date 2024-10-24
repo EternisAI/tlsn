@@ -1,6 +1,8 @@
 use std::error::Error;
 use tls_tee::TeeTlsError;
 
+use crate::provider::ProviderError;
+
 /// An error that can occur during TLS verification.
 #[derive(Debug, thiserror::Error)]
 #[allow(missing_docs)]
@@ -11,6 +13,8 @@ pub enum VerifierError {
     TeeError(Box<dyn Error + Send + Sync + 'static>),
     #[error("Range exceeds transcript length")]
     InvalidRange,
+    #[error("error occurred in provider: {0}")]
+    ProviderError(ProviderError),
 }
 
 impl From<uid_mux::yamux::ConnectionError> for VerifierError {

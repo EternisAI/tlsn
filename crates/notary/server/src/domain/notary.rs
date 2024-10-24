@@ -4,8 +4,8 @@ use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
-
 use crate::{config::NotarizationProperties, domain::auth::AuthorizationWhitelistRecord};
+use tlsn_verifier::provider::Processor;
 
 /// Response object of the /session API
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,6 +59,8 @@ pub struct NotaryGlobals {
     pub store: Arc<Mutex<HashMap<String, SessionData>>>,
     /// Whitelist of API keys for authorization purpose
     pub authorization_whitelist: Option<Arc<Mutex<HashMap<String, AuthorizationWhitelistRecord>>>>,
+    /// Providers to be used for attribute extraction
+    pub provider_processor: Processor,
 }
 
 impl NotaryGlobals {
@@ -66,12 +68,14 @@ impl NotaryGlobals {
         notary_signing_key: SigningKey,
         notarization_config: NotarizationProperties,
         authorization_whitelist: Option<Arc<Mutex<HashMap<String, AuthorizationWhitelistRecord>>>>,
+        provider_processor: Processor,
     ) -> Self {
         Self {
             notary_signing_key,
             notarization_config,
             store: Default::default(),
             authorization_whitelist,
+            provider_processor,
         }
     }
 }

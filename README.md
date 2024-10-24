@@ -88,3 +88,12 @@ Development: https://test.notary.eternis.ai
 ## Deployed Websocket servers 
 
 wss://inn1.eternis.ai:55688
+
+## Providers
+
+A provider configuration is a JSON object describing a web request,  what and how to extract data from the response.
+See [config.yaml](./crates/notary/server/config/config.yaml) to find the link to default provider list and provider schema.
+
+### How to add provider
+
+https://www.loom.com/share/aee6a2595eaa446cb8c270235a4600fe?sid=3a96aef0-56ba-491a-97f1-27da70bc07e5
