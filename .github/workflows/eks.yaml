@@ -1,0 +1,10 @@
+name: EKS Nitro Builder
+on:
+  workflow_dispatch:
+
+jobs:
+  Checkout:
+    runs-on: arc-runner-set
+    steps:
+    - run: echo "🎉 This job uses runner scale set runners!"
+    - uses: actions/checkout@v4
