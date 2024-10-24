@@ -7,7 +7,6 @@ use futures::TryFutureExt;
 use http_body_util::{BodyExt, Full};
 use hyper::body::Bytes;
 use tls_client_async::TlsConnection;
-use tlsn_core::Direction;
 use tlsn_prover::tls::{state, Prover};
 use tracing::info;
 use wasm_bindgen::{prelude::*, JsError};
@@ -29,7 +28,6 @@ enum State {
     Initialized(Prover<state::Initialized>),
     Setup(Prover<state::Setup>),
     Closed(Prover<state::Closed>),
-    Complete,
     Error,
 }
 
@@ -50,7 +48,7 @@ impl JsProver {
 
     /// Set up the prover.
     ///
-    /// This performs all MPC setup prior to establishing the connection to the
+    /// This performs all Tee setup prior to establishing the connection to the
     /// application server.
     pub async fn setup(&mut self, verifier_url: &str) -> Result<()> {
         let prover = self.state.take().try_into_initialized()?;
@@ -83,15 +81,12 @@ impl JsProver {
         info!("connected to server");
 
         let (tls_conn, prover_fut) = prover.connect(server_conn.into_io()).await?;
-        let prover_ctrl = prover_fut.control();
+        let _prover_ctrl = prover_fut.control();
 
         info!("sending request");
 
         let (response, prover) = futures::try_join!(
-            async move {
-                prover_ctrl.defer_decryption().await?;
-                send_request(tls_conn, request).await
-            },
+            async move { send_request(tls_conn, request).await },
             prover_fut.map_err(Into::into),
         )?;
 
@@ -102,64 +97,50 @@ impl JsProver {
         Ok(response)
     }
 
-    /// Returns the transcript.
-    pub fn transcript(&self) -> Result<Transcript> {
-        let prover = self.state.try_as_closed()?;
-
-        let sent = prover.sent_transcript().data().clone();
-        let recv = prover.recv_transcript().data().clone();
-
-        Ok(Transcript {
-            sent: sent.to_vec(),
-            recv: recv.to_vec(),
-        })
-    }
-
     /// Runs the notarization protocol.
-    pub async fn notarize(&mut self, commit: Commit) -> Result<NotarizedSession> {
-        let mut prover = self.state.take().try_into_closed()?.start_notarize();
-
+    pub async fn notarize(&mut self) -> Result<String> {
         info!("starting notarization");
 
-        let builder = prover.commitment_builder();
-
-        for range in commit.sent {
-            builder.commit_sent(&range)?;
-        }
-
-        for range in commit.recv {
-            builder.commit_recv(&range)?;
-        }
+        let prover = self.state.take().try_into_closed()?.start_notarize();
 
         let notarized_session = prover.finalize().await?;
 
-        info!("notarization complete");
+        info!(
+            "notarization complete. Signature: {:?}\r\n attributes: {:?} attestations {:?} application_data {:?}",
+            notarized_session.signature,
+            notarized_session.attestations.keys(),
+            notarized_session.attestations.values(),
+            notarized_session.application_data
+        );
 
-        Ok(notarized_session.into())
-    }
+        info!("attestations: {:?}", notarized_session.attestations);
 
-    /// Reveals data to the verifier and finalizes the protocol.
-    pub async fn reveal(&mut self, reveal: Reveal) -> Result<()> {
-        let mut prover = self.state.take().try_into_closed()?.start_prove();
-
-        info!("revealing data");
-
-        for range in reveal.sent {
-            prover.reveal(range, Direction::Sent)?;
+        let mut attestations_vec = Vec::new();
+        for (key, value) in notarized_session.attestations.iter() {
+            info!("attestation: {} {:?}", key, value);
+            attestations_vec.push(
+                json!({
+                    "attribute_name": key,
+                    "attribute_hex": hex::encode(key.as_bytes()),
+                    "signature": format!("{}", hex::encode(value.to_bytes())),
+                })
+                .to_string(),
+            );
         }
+        info!("attestations: {:?}", attestations_vec);
+        info!("attestations: {:?}", attestations_vec.join("|"));
 
-        for range in reveal.recv {
-            prover.reveal(range, Direction::Received)?;
-        }
+        use serde_json::json;
 
-        prover.prove().await?;
-        prover.finalize().await?;
+        let serialized = json!({
+            "application_data": notarized_session.application_data,
+            "signature": format!("{}", hex::encode(notarized_session.signature.to_bytes())),
+            "attributes": attestations_vec
 
-        info!("Finalized");
+        })
+        .to_string();
 
-        self.state = State::Complete;
-
-        Ok(())
+        Ok(serialized)
     }
 }
 
@@ -183,8 +164,7 @@ async fn send_request(conn: TlsConnection, request: HttpRequest) -> Result<HttpR
 
     let (response, body) = response.into_parts();
 
-    // TODO: return the body
-    let _body = body.collect().await?;
+    let body = String::from_utf8(body.collect().await?.to_bytes().to_vec())?;
 
     let headers = response
         .headers
@@ -200,5 +180,6 @@ async fn send_request(conn: TlsConnection, request: HttpRequest) -> Result<HttpR
     Ok(HttpResponse {
         status: response.status.as_u16(),
         headers,
+        body,
     })
 }

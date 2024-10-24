@@ -78,3 +78,13 @@ for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
 dual licensed as above, without any additional terms or conditions.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Deployed Eternis Notaries
+
+Production: https://notary.eternis.ai 
+
+Development: https://test.notary.eternis.ai 
+
+## Deployed Websocket servers 
+
+wss://inn1.eternis.ai:55688

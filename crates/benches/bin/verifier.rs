@@ -1,10 +1,8 @@
 use anyhow::Context;
-use tls_core::verify::WebPkiVerifier;
 use tlsn_benches::{
     config::{BenchInstance, Config},
     set_interface, VERIFIER_INTERFACE,
 };
-use tlsn_server_fixture::CA_CERT_DER;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::compat::TokioAsyncReadCompatExt;
 
@@ -66,7 +64,6 @@ async fn run_instance<S: AsyncWrite + AsyncRead + Send + Sync + Unpin + 'static>
     let verifier = Verifier::new(
         VerifierConfig::builder()
             .id("test")
-            .cert_verifier(cert_verifier())
             .max_sent_data(upload_size + 256)
             .max_recv_data(download_size + 256)
             .build()?,
@@ -77,13 +74,4 @@ async fn run_instance<S: AsyncWrite + AsyncRead + Send + Sync + Unpin + 'static>
     println!("verifier done");
 
     Ok(())
-}
-
-fn cert_verifier() -> WebPkiVerifier {
-    let mut root_store = tls_core::anchors::RootCertStore::empty();
-    root_store
-        .add(&tls_core::key::Certificate(CA_CERT_DER.to_vec()))
-        .unwrap();
-
-    WebPkiVerifier::new(root_store, None)
 }

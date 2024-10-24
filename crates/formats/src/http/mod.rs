@@ -3,7 +3,9 @@
 mod commit;
 mod session;
 
+#[cfg(feature = "mpz")]
 pub use commit::{DefaultHttpCommitter, HttpCommit, HttpCommitError};
+#[cfg(feature = "mpz")]
 pub use session::NotarizedHttpSession;
 
 #[doc(hidden)]
@@ -13,6 +15,7 @@ pub use http::{
     parse_request, parse_response, Body, BodyContent, Header, HeaderName, HeaderValue, Method,
     Reason, Request, RequestLine, Requests, Response, Responses, Status, Target,
 };
+#[cfg(feature = "mpz")]
 use tlsn_core::Transcript;
 
 /// The kind of HTTP message.
@@ -35,6 +38,7 @@ pub struct HttpTranscript {
 
 impl HttpTranscript {
     /// Parses the HTTP transcript from the provided transcripts.
+    #[cfg(feature = "mpz")]
     pub fn parse(tx: &Transcript, rx: &Transcript) -> Result<Self, spansy::ParseError> {
         let requests = Requests::new(tx.data().clone()).collect::<Result<Vec<_>, _>>()?;
         let responses = Responses::new(rx.data().clone()).collect::<Result<Vec<_>, _>>()?;
@@ -47,6 +51,7 @@ impl HttpTranscript {
 }
 
 #[cfg(test)]
+#[cfg(feature = "mpz")]
 mod tests {
     use super::*;
 
