@@ -6,5 +6,6 @@ jobs:
   Checkout:
     runs-on: arc-runner-set
     steps:
-    - run: echo "🎉 This job uses runner scale set runners!"
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - run: echo "🎉 This job uses runner scale set runners!"
+      - run: nitro-cli describe-enclaves
