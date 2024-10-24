@@ -8,6 +8,8 @@ server:
     <li>git commit hash: <a href="https://github.com/EternisAI/tlsn/commit/{git_commit_hash}">{git_commit_hash}</a></li>
     <li>git commit timestamp: {git_commit_timestamp}</li>
     <li>public key: <pre>{public_key}</pre></li>
+    <li>sync state: {sync_state}</li>
+    <li>synced key length: {synced_key}</li>
     </ul>
     <a href="/healthcheck">health check</a> - <a href="/info">info</a><br/>
 
@@ -29,3 +31,9 @@ logging:
 authorization:
   enabled: false
   whitelist-csv-path: "./fixture/auth/whitelist.csv"
+
+nitriding:
+  enabled: true
+  host: "127.0.0.1"
+  int-port: 8080
+  ext-port: 443
